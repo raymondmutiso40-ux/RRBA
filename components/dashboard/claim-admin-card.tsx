@@ -13,10 +13,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  claimSuperAdminAction,
   emptyBootstrapActionState,
   type BootstrapActionState,
-} from "@/lib/auth/bootstrap-actions";
+} from "@/lib/auth/bootstrap";
+import { claimSuperAdminAction } from "@/lib/auth/bootstrap-actions";
 
 /**
  * One-time claim for the first super_admin. Rendered only when the server has

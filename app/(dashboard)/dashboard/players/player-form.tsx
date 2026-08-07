@@ -24,10 +24,12 @@ import {
   POSITION_LABELS,
 } from "@/lib/players/labels";
 import {
-  createPlayerAction,
   emptyPlayerActionState,
-  updatePlayerAction,
   type PlayerActionState,
+} from "@/lib/players/action-state";
+import {
+  createPlayerAction,
+  updatePlayerAction,
 } from "@/lib/players/actions";
 import type { Player } from "@/lib/players/queries";
 

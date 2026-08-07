@@ -66,3 +66,17 @@ export async function getBootstrapState(
 
   return { available: true, configuredEmail };
 }
+
+/**
+ * Result of a claim attempt.
+ *
+ * Lives here rather than beside the action itself: a "use server" module may
+ * only export async functions, so a plain object constant there is a build
+ * error. Types are erased at compile time, but the constant is not.
+ */
+export type BootstrapActionState = {
+  ok: boolean;
+  message?: string;
+};
+
+export const emptyBootstrapActionState: BootstrapActionState = { ok: false };

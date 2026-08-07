@@ -7,14 +7,7 @@ import { requireStaff } from "@/lib/auth/session";
 import { canCreatePlayers, canEditPlayers } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { playerSchema } from "@/lib/validation/schemas";
-
-export type PlayerActionState = {
-  ok: boolean;
-  message?: string;
-  fieldErrors?: Record<string, string>;
-};
-
-export const emptyPlayerActionState: PlayerActionState = { ok: false };
+import type { PlayerActionState } from "@/lib/players/action-state";
 
 /** "" → null, so optional DB columns stay null rather than empty strings. */
 function text(formData: FormData, key: string): string {
