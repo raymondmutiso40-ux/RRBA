@@ -15,7 +15,7 @@ import {
 import {
   emptyBootstrapActionState,
   type BootstrapActionState,
-} from "@/lib/auth/bootstrap";
+} from "@/lib/auth/bootstrap-state";
 import { claimSuperAdminAction } from "@/lib/auth/bootstrap-actions";
 
 /**
