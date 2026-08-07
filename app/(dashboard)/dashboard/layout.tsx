@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { AccountPending } from "@/components/dashboard/account-pending";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
+import { SchemaMissing } from "@/components/schema-missing";
 import { SetupRequired } from "@/components/setup-required";
-import { getAccountState } from "@/lib/auth/session";
+import { SCHEMA_MISSING, getAccountState } from "@/lib/auth/session";
 import { getBootstrapState } from "@/lib/auth/bootstrap";
 import { navigationForRoles } from "@/lib/auth/navigation";
 import { ROLE_LABELS, primaryRole } from "@/lib/auth/permissions";
@@ -22,6 +23,11 @@ export default async function DashboardLayout({
   if (!isSupabaseConfigured()) return <SetupRequired />;
 
   const account = await getAccountState();
+
+  // Credentials work and the token is valid, but the tables do not exist, so
+  // no profile could ever be found. Redirecting to /login here would loop,
+  // since the proxy sends authenticated users straight back to /dashboard.
+  if (account === SCHEMA_MISSING) return <SchemaMissing />;
 
   // Genuinely signed out. The proxy normally catches this first.
   if (!account) redirect("/login");

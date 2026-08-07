@@ -31,7 +31,26 @@ export type AccountState = {
   authUser: User;
 };
 
-export async function getAccountState(): Promise<AccountState | null> {
+/**
+ * True when a query failed because the table itself is absent, rather than
+ * because the row is missing. Distinguishing the two matters: a missing row
+ * means "sign in", a missing table means "the migrations were never applied",
+ * and treating the second as the first produces a redirect loop between
+ * /dashboard and /login for a user who does hold a valid token.
+ *
+ * 42P01 is Postgres undefined_table; PGRST205 is PostgREST failing to find it
+ * in the schema cache.
+ */
+export function isSchemaMissing(error: { code?: string } | null): boolean {
+  return error?.code === "42P01" || error?.code === "PGRST205";
+}
+
+/** Sentinel distinguishing "database not set up" from "not signed in". */
+export const SCHEMA_MISSING = "schema-missing" as const;
+
+export async function getAccountState(): Promise<
+  AccountState | typeof SCHEMA_MISSING | null
+> {
   const supabase = await createClient();
 
   const {
@@ -48,6 +67,8 @@ export async function getAccountState(): Promise<AccountState | null> {
       .maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", user.id),
   ]);
+
+  if (isSchemaMissing(profileResult.error)) return SCHEMA_MISSING;
 
   const profile = profileResult.data;
   if (!profile) return null;
