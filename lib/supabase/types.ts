@@ -1,0 +1,369 @@
+/**
+ * Database types.
+ *
+ * Hand-written for M0 to cover the tables the foundation actually queries.
+ * Once a Supabase project exists, regenerate the full file with:
+ *
+ *   npx supabase gen types typescript --project-id <id> > lib/supabase/types.ts
+ *
+ * Keep the generated output in git so type errors surface at build time
+ * rather than at runtime.
+ */
+
+export type AppRole =
+  | "super_admin"
+  | "academy_admin"
+  | "coach"
+  | "finance"
+  | "player"
+  | "guardian";
+
+export type AccountStatus = "pending" | "active" | "suspended" | "archived";
+
+export type Gender = "male" | "female" | "other" | "undisclosed";
+
+export type PlayerStatus =
+  | "applicant"
+  | "active"
+  | "inactive"
+  | "graduated"
+  | "withdrawn";
+
+export type BasketballPosition =
+  | "point_guard"
+  | "shooting_guard"
+  | "small_forward"
+  | "power_forward"
+  | "center";
+
+export type EventType = "training" | "match";
+export type EventStatus = "scheduled" | "completed" | "cancelled";
+export type AttendanceStatus = "present" | "absent" | "late" | "excused";
+export type InvoiceStatus =
+  | "draft"
+  | "issued"
+  | "partially_paid"
+  | "paid"
+  | "void";
+export type PaymentState = "pending" | "confirmed" | "failed" | "reversed";
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          email: string;
+          full_name: string;
+          phone: string | null;
+          avatar_path: string | null;
+          status: AccountStatus;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          email: string;
+          full_name?: string;
+          phone?: string | null;
+          avatar_path?: string | null;
+          status?: AccountStatus;
+        };
+        Update: {
+          email?: string;
+          full_name?: string;
+          phone?: string | null;
+          avatar_path?: string | null;
+          status?: AccountStatus;
+        };
+        Relationships: [];
+      };
+      user_roles: {
+        Row: {
+          id: string;
+          user_id: string;
+          role: AppRole;
+          granted_by: string | null;
+          granted_at: string;
+        };
+        Insert: {
+          user_id: string;
+          role: AppRole;
+          granted_by?: string | null;
+        };
+        Update: {
+          role?: AppRole;
+        };
+        Relationships: [];
+      };
+      audit_log: {
+        Row: {
+          id: number;
+          actor_id: string | null;
+          action: string;
+          entity: string;
+          entity_id: string | null;
+          metadata: Record<string, unknown>;
+          ip_address: string | null;
+          created_at: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          action: string;
+          entity: string;
+          entity_id?: string | null;
+          metadata?: Record<string, unknown>;
+          ip_address?: string | null;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      players: {
+        Row: {
+          id: string;
+          profile_id: string | null;
+          first_name: string;
+          last_name: string;
+          date_of_birth: string;
+          gender: Gender;
+          photo_path: string | null;
+          email: string | null;
+          phone: string | null;
+          address: string | null;
+          position: BasketballPosition | null;
+          jersey_number: number | null;
+          height_cm: number | null;
+          weight_kg: number | null;
+          dominant_hand: string | null;
+          status: PlayerStatus;
+          registration_date: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          first_name: string;
+          last_name: string;
+          date_of_birth: string;
+          gender?: Gender;
+          profile_id?: string | null;
+          photo_path?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          position?: BasketballPosition | null;
+          jersey_number?: number | null;
+          height_cm?: number | null;
+          weight_kg?: number | null;
+          dominant_hand?: string | null;
+          status?: PlayerStatus;
+          registration_date?: string;
+          notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["players"]["Insert"]>;
+        Relationships: [];
+      };
+      teams: {
+        Row: {
+          id: string;
+          name: string;
+          age_group: string;
+          gender: Gender;
+          season_id: string | null;
+          description: string | null;
+          logo_path: string | null;
+          min_age: number | null;
+          max_age: number | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          name: string;
+          age_group: string;
+          gender?: Gender;
+          season_id?: string | null;
+          description?: string | null;
+          logo_path?: string | null;
+          min_age?: number | null;
+          max_age?: number | null;
+          is_active?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["teams"]["Insert"]>;
+        Relationships: [];
+      };
+      events: {
+        Row: {
+          id: string;
+          event_type: EventType;
+          team_id: string | null;
+          title: string;
+          description: string | null;
+          starts_at: string;
+          ends_at: string;
+          location: string | null;
+          status: EventStatus;
+          coach_id: string | null;
+          opponent: string | null;
+          competition: string | null;
+          is_home: boolean | null;
+          final_score_team: number | null;
+          final_score_opp: number | null;
+          result: "win" | "loss" | "draw" | null;
+          stats_recorded: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          event_type: EventType;
+          title: string;
+          starts_at: string;
+          ends_at: string;
+          team_id?: string | null;
+          description?: string | null;
+          location?: string | null;
+          status?: EventStatus;
+          coach_id?: string | null;
+          opponent?: string | null;
+          competition?: string | null;
+          is_home?: boolean | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["events"]["Insert"]>;
+        Relationships: [];
+      };
+      attendance: {
+        Row: {
+          id: string;
+          event_id: string;
+          player_id: string;
+          status: AttendanceStatus;
+          marked_by: string | null;
+          notes: string | null;
+          marked_at: string;
+        };
+        Insert: {
+          event_id: string;
+          player_id: string;
+          status?: AttendanceStatus;
+          marked_by?: string | null;
+          notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["attendance"]["Insert"]>;
+        Relationships: [];
+      };
+      invoices: {
+        Row: {
+          id: string;
+          invoice_number: string;
+          player_id: string;
+          fee_type_id: string | null;
+          description: string;
+          amount_due: number;
+          currency: string;
+          period_start: string | null;
+          period_end: string | null;
+          issued_on: string;
+          due_on: string;
+          status: InvoiceStatus;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          invoice_number: string;
+          player_id: string;
+          description: string;
+          amount_due: number;
+          due_on: string;
+          fee_type_id?: string | null;
+          currency?: string;
+          period_start?: string | null;
+          period_end?: string | null;
+          issued_on?: string;
+          status?: InvoiceStatus;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["invoices"]["Insert"]>;
+        Relationships: [];
+      };
+      contact_submissions: {
+        Row: {
+          id: string;
+          full_name: string;
+          email: string;
+          phone: string | null;
+          subject: string | null;
+          message: string;
+          player_age: number | null;
+          is_application: boolean;
+          handled_by: string | null;
+          handled_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          full_name: string;
+          email: string;
+          message: string;
+          phone?: string | null;
+          subject?: string | null;
+          player_age?: number | null;
+          is_application?: boolean;
+        };
+        Update: {
+          handled_by?: string | null;
+          handled_at?: string | null;
+        };
+        Relationships: [];
+      };
+    };
+    Views: {
+      invoice_balances: {
+        Row: {
+          invoice_id: string;
+          invoice_number: string;
+          player_id: string;
+          amount_due: number;
+          currency: string;
+          due_on: string;
+          status: InvoiceStatus;
+          amount_paid: number;
+          balance: number;
+          is_overdue: boolean;
+        };
+        Relationships: [];
+      };
+      player_account_summary: {
+        Row: {
+          player_id: string;
+          invoice_count: number;
+          total_billed: number;
+          total_paid: number;
+          total_outstanding: number;
+          has_overdue: boolean | null;
+        };
+        Relationships: [];
+      };
+    };
+    Functions: {
+      has_role: { Args: { target_role: AppRole }; Returns: boolean };
+      is_admin: { Args: Record<string, never>; Returns: boolean };
+      is_staff: { Args: Record<string, never>; Returns: boolean };
+      next_invoice_number: { Args: Record<string, never>; Returns: string };
+      next_receipt_number: { Args: Record<string, never>; Returns: string };
+    };
+    Enums: {
+      app_role: AppRole;
+      account_status: AccountStatus;
+      gender: Gender;
+      player_status: PlayerStatus;
+      basketball_position: BasketballPosition;
+      event_type: EventType;
+      event_status: EventStatus;
+      attendance_status: AttendanceStatus;
+      invoice_status: InvoiceStatus;
+      payment_state: PaymentState;
+    };
+  };
+}

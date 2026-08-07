@@ -1,0 +1,291 @@
+import { z } from "zod";
+
+/**
+ * Shared validation schemas.
+ *
+ * Every schema is used on both sides: the browser validates as the user
+ * types, and the server re-validates the same schema before touching the
+ * database. Trusting client-side validation alone would let anyone POST
+ * arbitrary data straight to Supabase.
+ *
+ * The mirror-comments reference the Postgres columns each schema validates.
+ */
+
+// ---------------------------------------------------------------------------
+// Identity & auth
+// ---------------------------------------------------------------------------
+
+export const authSignUpSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  password: z
+    .string()
+    .min(8, "At least 8 characters")
+    .max(128)
+    .regex(/[A-Za-z]/, "Include at least one letter")
+    .regex(/[0-9]/, "Include at least one number"),
+  fullName: z.string().trim().min(2).max(160),
+});
+
+export const authLoginSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  password: z.string().min(1, "Enter your password").max(128),
+});
+
+export const authRequestResetSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+export const authUpdatePasswordSchema = z.object({
+  password: z
+    .string()
+    .min(8, "At least 8 characters")
+    .max(128)
+    .regex(/[A-Za-z]/, "Include at least one letter")
+    .regex(/[0-9]/, "Include at least one number"),
+});
+
+export const profileUpdateSchema = z.object({
+  fullName: z.string().trim().min(2).max(160).optional(),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+});
+
+// ---------------------------------------------------------------------------
+// People
+// ---------------------------------------------------------------------------
+
+export const playerSchema = z.object({
+  // players
+  firstName: z.string().trim().min(1).max(100),
+  lastName: z.string().trim().min(1).max(100),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
+    .refine((value) => {
+      const date = new Date(`${value}T00:00:00Z`);
+      return !Number.isNaN(date.getTime());
+    }, "Invalid date"),
+  gender: z.enum(["male", "female", "other", "undisclosed"]),
+  email: z.string().trim().toLowerCase().email().optional().or(z.literal("")),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  address: z.string().trim().max(500).optional().or(z.literal("")),
+  position: z
+    .enum(["point_guard", "shooting_guard", "small_forward", "power_forward", "center"])
+    .optional()
+    .nullable(),
+  jerseyNumber: z
+    .number()
+    .int()
+    .min(0)
+    .max(99)
+    .optional()
+    .nullable(),
+  heightCm: z.number().int().min(80).max(260).optional().nullable(),
+  weightKg: z.number().min(20).max(300).optional().nullable(),
+  dominantHand: z.enum(["left", "right", "ambidextrous"]).optional().nullable(),
+  status: z.enum(["applicant", "active", "inactive", "graduated", "withdrawn"]).optional(),
+  notes: z.string().trim().max(4000).optional().or(z.literal("")),
+});
+
+export const guardianSchema = z.object({
+  // guardians
+  fullName: z.string().trim().min(2).max(160),
+  relationship: z.string().trim().min(2).max(50),
+  email: z.string().trim().toLowerCase().email().optional().or(z.literal("")),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number"),
+  altPhone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  address: z.string().trim().max(500).optional().or(z.literal("")),
+  occupation: z.string().trim().max(160).optional().or(z.literal("")),
+  isEmergencyContact: z.boolean().optional(),
+});
+
+export const playerMedicalSchema = z.object({
+  // player_medical
+  bloodGroup: z
+    .enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
+    .optional()
+    .nullable(),
+  allergies: z.string().trim().max(2000).optional().or(z.literal("")),
+  chronicConditions: z.string().trim().max(2000).optional().or(z.literal("")),
+  medications: z.string().trim().max(2000).optional().or(z.literal("")),
+  dietaryRequirements: z.string().trim().max(2000).optional().or(z.literal("")),
+  insuranceProvider: z.string().trim().max(200).optional().or(z.literal("")),
+  insuranceNumber: z.string().trim().max(100).optional().or(z.literal("")),
+  doctorName: z.string().trim().max(160).optional().or(z.literal("")),
+  doctorPhone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  emergencyContactName: z.string().trim().max(160).optional().or(z.literal("")),
+  emergencyContactPhone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  lastPhysicalOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
+    .optional()
+    .nullable(),
+  clearedToPlay: z.boolean().optional(),
+  notes: z.string().trim().max(4000).optional().or(z.literal("")),
+});
+
+// ---------------------------------------------------------------------------
+// Teams & coaches
+// ---------------------------------------------------------------------------
+
+export const teamSchema = z.object({
+  // teams
+  name: z.string().trim().min(1).max(120),
+  ageGroup: z.string().trim().min(1).max(80),
+  gender: z.enum(["male", "female", "other", "undisclosed"]),
+  seasonId: z.string().uuid().optional().nullable(),
+  description: z.string().trim().max(2000).optional().or(z.literal("")),
+  minAge: z.number().int().min(4).max(30).optional().nullable(),
+  maxAge: z.number().int().min(4).max(30).optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
+export const seasonSchema = z.object({
+  // seasons
+  name: z.string().trim().min(1).max(120),
+  startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
+  endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
+  isCurrent: z.boolean().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Activity
+// ---------------------------------------------------------------------------
+
+export const eventSchema = z.object({
+  // events
+  eventType: z.enum(["training", "match"]),
+  teamId: z.string().uuid().optional().nullable(),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2000).optional().or(z.literal("")),
+  startsAt: z.string().min(1, "Required"),
+  endsAt: z.string().min(1, "Required"),
+  location: z.string().trim().max(200).optional().or(z.literal("")),
+  status: z.enum(["scheduled", "completed", "cancelled"]).optional(),
+  coachId: z.string().uuid().optional().nullable(),
+  // match-only
+  opponent: z.string().trim().max(120).optional().or(z.literal("")),
+  competition: z.string().trim().max(200).optional().or(z.literal("")),
+  isHome: z.boolean().optional().nullable(),
+  finalScoreTeam: z.number().int().min(0).optional().nullable(),
+  finalScoreOpp: z.number().int().min(0).optional().nullable(),
+  result: z.enum(["win", "loss", "draw"]).optional().nullable(),
+});
+
+export const playerMatchStatsSchema = z.object({
+  // player_match_stats
+  eventId: z.string().uuid(),
+  playerId: z.string().uuid(),
+  minutesPlayed: z.number().int().min(0).optional().nullable(),
+  points: z.number().int().min(0).optional().nullable(),
+  rebounds: z.number().int().min(0).optional().nullable(),
+  assists: z.number().int().min(0).optional().nullable(),
+  steals: z.number().int().min(0).optional().nullable(),
+  blocks: z.number().int().min(0).optional().nullable(),
+  turnovers: z.number().int().min(0).optional().nullable(),
+  fouls: z.number().int().min(0).optional().nullable(),
+  fgAttempts: z.number().int().min(0).optional().nullable(),
+  fgMade: z.number().int().min(0).optional().nullable(),
+  threeAttempts: z.number().int().min(0).optional().nullable(),
+  threeMade: z.number().int().min(0).optional().nullable(),
+  ftAttempts: z.number().int().min(0).optional().nullable(),
+  ftMade: z.number().int().min(0).optional().nullable(),
+});
+
+// ---------------------------------------------------------------------------
+// Finance
+// ---------------------------------------------------------------------------
+
+export const feeTypeSchema = z.object({
+  // fee_types
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).optional().or(z.literal("")),
+  amount: z.number().positive().max(10_000_000),
+  currency: z.string().length(3).toUpperCase().default("KES"),
+  interval: z.enum(["one_time", "monthly", "termly", "annual"]),
+});
+
+export const invoiceSchema = z.object({
+  // invoices
+  playerId: z.string().uuid(),
+  feeTypeId: z.string().uuid().optional().nullable(),
+  description: z.string().trim().min(1).max(1000),
+  amountDue: z.number().positive().max(10_000_000),
+  currency: z.string().length(3).toUpperCase().default("KES"),
+  periodStart: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
+    .optional()
+    .nullable(),
+  periodEnd: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
+    .optional()
+    .nullable(),
+  issuedOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
+    .optional(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
+});
+
+export const paymentRecordSchema = z.object({
+  // payments — recorded manually (cash, bank transfer, …)
+  invoiceId: z.string().uuid(),
+  amount: z.number().positive().max(10_000_000),
+  currency: z.string().length(3).toUpperCase().default("KES"),
+  method: z.enum(["cash", "mpesa", "bank_transfer", "cheque", "card", "other"]),
+  paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
+  reference: z.string().trim().max(200).optional().or(z.literal("")),
+  payerName: z.string().trim().max(160).optional().or(z.literal("")),
+  payerPhone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  notes: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export const contactSubmissionSchema = z.object({
+  // contact_submissions — public form
+  fullName: z.string().trim().min(2).max(160),
+  email: z.string().trim().toLowerCase().email(),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
+    .optional()
+    .or(z.literal("")),
+  subject: z.string().trim().max(200).optional().or(z.literal("")),
+  message: z.string().trim().min(10).max(4000),
+  playerAge: z.number().int().min(3).max(30).optional().nullable(),
+  isApplication: z.boolean().optional(),
+});

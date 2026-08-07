@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   RRBA design tokens
+   ---------------------------------------------------------------------------
+   Court orange as the accent against a deep slate foundation — athletic and
+   warm without drifting into the flat primary-blue look of generic admin
+   templates. Every surface/foreground pair below is chosen to clear WCAG AA
+   contrast in both schemes.
+   =========================================================================== */
+
+@theme {
+  /* Brand — court orange */
+  --color-brand-50: oklch(0.97 0.02 55);
+  --color-brand-100: oklch(0.94 0.04 55);
+  --color-brand-200: oklch(0.88 0.08 55);
+  --color-brand-300: oklch(0.81 0.12 52);
+  --color-brand-400: oklch(0.74 0.16 48);
+  --color-brand-500: oklch(0.67 0.19 45);
+  --color-brand-600: oklch(0.60 0.19 42);
+  --color-brand-700: oklch(0.50 0.16 40);
+  --color-brand-800: oklch(0.41 0.13 38);
+  --color-brand-900: oklch(0.34 0.10 37);
+
+  /* Neutrals — slate with a faint cool cast */
+  --color-ink-50: oklch(0.98 0.003 250);
+  --color-ink-100: oklch(0.96 0.005 250);
+  --color-ink-200: oklch(0.92 0.008 250);
+  --color-ink-300: oklch(0.85 0.011 250);
+  --color-ink-400: oklch(0.68 0.014 250);
+  --color-ink-500: oklch(0.55 0.016 250);
+  --color-ink-600: oklch(0.44 0.018 252);
+  --color-ink-700: oklch(0.35 0.020 254);
+  --color-ink-800: oklch(0.25 0.022 256);
+  --color-ink-900: oklch(0.18 0.020 258);
+  --color-ink-950: oklch(0.13 0.018 258);
+
+  /* Status */
+  --color-success: oklch(0.62 0.15 150);
+  --color-warning: oklch(0.75 0.15 80);
+  --color-danger: oklch(0.58 0.20 25);
+  --color-info: oklch(0.62 0.14 240);
+
+  --radius-card: 0.75rem;
+}
+
+/* Semantic tokens — components reference these, never raw palette steps,
+   so dark mode is a variable swap rather than a per-component override. */
+:root {
+  --background: var(--color-ink-50);
+  --surface: #ffffff;
+  --surface-muted: var(--color-ink-100);
+  --border-color: var(--color-ink-200);
+  --foreground: var(--color-ink-900);
+  --foreground-muted: var(--color-ink-500);
+  --primary: var(--color-brand-600);
+  --primary-foreground: #ffffff;
+  --ring: var(--color-brand-500);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: var(--color-ink-950);
+    --surface: var(--color-ink-900);
+    --surface-muted: var(--color-ink-800);
+    --border-color: var(--color-ink-800);
+    --foreground: var(--color-ink-50);
+    --foreground-muted: var(--color-ink-400);
+    --primary: var(--color-brand-500);
+    --primary-foreground: var(--color-ink-950);
+    --ring: var(--color-brand-400);
+  }
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible focus for keyboard users on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Respect users who have asked for less motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

@@ -1,0 +1,56 @@
+/**
+ * Environment access for Supabase credentials.
+ *
+ * Fails loudly at call time rather than letting `undefined` reach the SDK,
+ * where it surfaces as an opaque network error instead of a config mistake.
+ */
+
+export function getPublicSupabaseConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error(
+      "Supabase is not configured. Copy .env.example to .env.local and set " +
+        "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    );
+  }
+
+  return { url, anonKey };
+}
+
+/**
+ * Whether Supabase credentials are present.
+ *
+ * Lets pages render setup guidance instead of throwing on a fresh clone,
+ * where no .env.local exists yet.
+ */
+export function isSupabaseConfigured() {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+}
+
+/**
+ * Service-role config. Server-only — this key bypasses row-level security
+ * entirely, so importing it into a client component would hand every visitor
+ * unrestricted database access.
+ */
+export function getServiceRoleConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is not configured. Required for admin-only " +
+        "server operations.",
+    );
+  }
+
+  return { url, serviceRoleKey };
+}
+
+export function getSiteUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+}
