@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AccountPending } from "@/components/dashboard/account-pending";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
 import { SetupRequired } from "@/components/setup-required";
-import { getSessionUser } from "@/lib/auth/session";
+import { getAccountState } from "@/lib/auth/session";
+import { getBootstrapState } from "@/lib/auth/bootstrap";
 import { navigationForRoles } from "@/lib/auth/navigation";
 import { ROLE_LABELS, primaryRole } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -19,13 +21,25 @@ export default async function DashboardLayout({
   // show setup guidance rather than letting the client constructor throw.
   if (!isSupabaseConfigured()) return <SetupRequired />;
 
-  const user = await getSessionUser();
+  const account = await getAccountState();
 
-  // Middleware already redirected anonymous visitors. This second check
-  // covers the case it cannot see: a signed-in account whose profile is
-  // pending or suspended.
-  if (!user) redirect("/login");
+  // Genuinely signed out. The proxy normally catches this first.
+  if (!account) redirect("/login");
 
+  // Signed in but not active — every new signup starts here. Render the
+  // waiting state instead of redirecting: the proxy bounces authenticated
+  // users from /login back to /dashboard, so a redirect would loop.
+  if (account.status !== "active") {
+    return (
+      <AccountPending
+        email={account.email}
+        status={account.status}
+        bootstrap={await getBootstrapState(account.email)}
+      />
+    );
+  }
+
+  const user = account;
   const sections = navigationForRoles(user.roles);
   const role = primaryRole(user.roles);
 

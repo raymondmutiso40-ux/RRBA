@@ -36,19 +36,19 @@ Runda Ridge Basketball Academy and to manage his player track his payment
    supabase/migrations/20260807000300_activity_and_development.sql
    supabase/migrations/20260807000400_finance_and_platform.sql
    supabase/migrations/20260807000500_rls_policies.sql
+   supabase/migrations/20260807000600_privilege_guard_and_bootstrap.sql
    ```
 
-4. Sign up once through the app, then bootstrap yourself as super admin.
-   New accounts are created `pending` with no role, so the first user has to
-   both activate the profile and grant the role — there is no admin yet to do
-   it for them:
+4. Set `BOOTSTRAP_ADMIN_EMAIL` to the address you will sign up with, then
+   sign up. The dashboard shows a **Claim admin access** card for that
+   account — one click makes you super admin and activates your account. No
+   SQL required.
 
-   ```sql
-   update profiles set status = 'active' where email = 'you@example.com';
-
-   insert into user_roles (user_id, role)
-   select id, 'super_admin' from profiles where email = 'you@example.com';
-   ```
+   The claim is gated three ways, all re-checked on the server: the env var
+   must be set, no active super admin may exist yet, and your authenticated
+   email must match. It disables itself permanently once an administrator
+   exists. Leaving the variable blank switches the bootstrap off, so a public
+   deployment never grants admin to whoever happens to sign up first.
 
    Every later user is activated and granted a role from the admin UI.
 

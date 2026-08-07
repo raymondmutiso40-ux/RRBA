@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
+import { ClaimAdminCard } from "@/components/dashboard/claim-admin-card";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/auth/session";
+import { getBootstrapState } from "@/lib/auth/bootstrap";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, isStaff } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -29,6 +31,13 @@ export default async function DashboardPage() {
   const roles = user.roles;
   const firstName = user.fullName?.split(/\s+/)[0] ?? "there";
 
+  // An active account with no roles can still be the first admin — reachable
+  // if the account was activated by hand before any role was granted.
+  const bootstrap =
+    roles.length === 0
+      ? await getBootstrapState(user.email)
+      : { available: false as const, reason: "admin_exists" as const };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -42,7 +51,9 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {roles.length === 0 ? (
+      {bootstrap.available ? <ClaimAdminCard email={user.email} /> : null}
+
+      {roles.length === 0 && !bootstrap.available ? (
         <Alert tone="warning">
           <p className="font-medium">Awaiting role assignment</p>
           <p className="mt-1">

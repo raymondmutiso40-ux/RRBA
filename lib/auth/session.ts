@@ -1,7 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
-import type { AppRole } from "@/lib/supabase/types";
+import type { AccountStatus, AppRole } from "@/lib/supabase/types";
 import { isAdmin, isStaff } from "@/lib/auth/permissions";
 
 export type SessionUser = {
@@ -12,6 +12,58 @@ export type SessionUser = {
   roles: AppRole[];
   authUser: User;
 };
+
+/**
+ * The signed-in account regardless of whether it is active yet.
+ *
+ * Distinct from getSessionUser, which returns null for a non-active account.
+ * A brand-new signup is `pending` until an admin activates it, and it still
+ * needs to reach a page explaining that — redirecting it to /login instead
+ * bounces against the proxy's "signed in, go to /dashboard" rule and loops.
+ */
+export type AccountState = {
+  id: string;
+  email: string;
+  fullName: string;
+  avatarPath: string | null;
+  status: AccountStatus;
+  roles: AppRole[];
+  authUser: User;
+};
+
+export async function getAccountState(): Promise<AccountState | null> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const [profileResult, rolesResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("full_name, email, avatar_path, status")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+
+  const profile = profileResult.data;
+  if (!profile) return null;
+
+  return {
+    id: user.id,
+    // auth.users is the trustworthy source for the address; profiles.email
+    // mirrors it and is guarded against self-service edits.
+    email: user.email ?? profile.email,
+    fullName: profile.full_name,
+    avatarPath: profile.avatar_path,
+    status: profile.status,
+    roles: (rolesResult.data ?? []).map((row) => row.role),
+    authUser: user,
+  };
+}
 
 /**
  * Resolves the current user together with their profile and granted roles.
@@ -43,7 +95,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   return {
     id: user.id,
-    email: profile.email,
+    // auth.users, matching getAccountState. profiles.email only mirrors it.
+    email: user.email ?? profile.email,
     fullName: profile.full_name,
     avatarPath: profile.avatar_path,
     roles: (rolesResult.data ?? []).map((row) => row.role),

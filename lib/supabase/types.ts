@@ -474,6 +474,7 @@ export interface Database {
       };
     };
     Functions: {
+      has_any_admin: { Args: Record<string, never>; Returns: boolean };
       has_role: { Args: { target_role: AppRole }; Returns: boolean };
       is_admin: { Args: Record<string, never>; Returns: boolean };
       is_staff: { Args: Record<string, never>; Returns: boolean };
