@@ -317,6 +317,133 @@ export interface Database {
         };
         Relationships: [];
       };
+      team_players: {
+        Row: {
+          id: string;
+          team_id: string;
+          player_id: string;
+          joined_at: string;
+          left_at: string | null;
+        };
+        Insert: {
+          team_id: string;
+          player_id: string;
+          joined_at?: string;
+          left_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_players"]["Insert"]>;
+        Relationships: [];
+      };
+      team_coaches: {
+        Row: {
+          id: string;
+          team_id: string;
+          coach_id: string;
+          is_lead: boolean;
+          assigned_at: string;
+          unassigned_at: string | null;
+        };
+        Insert: {
+          team_id: string;
+          coach_id: string;
+          is_lead?: boolean;
+          assigned_at?: string;
+          unassigned_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_coaches"]["Insert"]>;
+        Relationships: [];
+      };
+      guardians: {
+        Row: {
+          id: string;
+          profile_id: string | null;
+          full_name: string;
+          relationship: string;
+          email: string | null;
+          phone: string;
+          alt_phone: string | null;
+          address: string | null;
+          occupation: string | null;
+          is_emergency_contact: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          full_name: string;
+          phone: string;
+          profile_id?: string | null;
+          relationship?: string;
+          email?: string | null;
+          alt_phone?: string | null;
+          address?: string | null;
+          occupation?: string | null;
+          is_emergency_contact?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["guardians"]["Insert"]>;
+        Relationships: [];
+      };
+      player_guardians: {
+        Row: {
+          id: string;
+          player_id: string;
+          guardian_id: string;
+          is_primary: boolean;
+          can_collect: boolean;
+          created_at: string;
+        };
+        Insert: {
+          player_id: string;
+          guardian_id: string;
+          is_primary?: boolean;
+          can_collect?: boolean;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["player_guardians"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      player_medical: {
+        Row: {
+          player_id: string;
+          blood_group: string | null;
+          allergies: string | null;
+          chronic_conditions: string | null;
+          medications: string | null;
+          dietary_requirements: string | null;
+          insurance_provider: string | null;
+          insurance_number: string | null;
+          doctor_name: string | null;
+          doctor_phone: string | null;
+          emergency_contact_name: string | null;
+          emergency_contact_phone: string | null;
+          last_physical_on: string | null;
+          cleared_to_play: boolean;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          player_id: string;
+          blood_group?: string | null;
+          allergies?: string | null;
+          chronic_conditions?: string | null;
+          medications?: string | null;
+          dietary_requirements?: string | null;
+          insurance_provider?: string | null;
+          insurance_number?: string | null;
+          doctor_name?: string | null;
+          doctor_phone?: string | null;
+          emergency_contact_name?: string | null;
+          emergency_contact_phone?: string | null;
+          last_physical_on?: string | null;
+          cleared_to_play?: boolean;
+          notes?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["player_medical"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Views: {
       invoice_balances: {
@@ -367,3 +494,15 @@ export interface Database {
     };
   };
 }
+
+/** Row shape of a public table, e.g. `Tables<"players">`. */
+export type Tables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Row"];
+
+/** Insert shape of a public table. */
+export type TablesInsert<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Insert"];
+
+/** Update shape of a public table. */
+export type TablesUpdate<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Update"];

@@ -65,6 +65,25 @@ export function canManageUsers(roles: AppRole[]) {
   return hasRole(roles, "super_admin");
 }
 
+/**
+ * Player record permissions, mirroring the RLS policies exactly.
+ *
+ * Creating a player is admin-only: the `players_admin_all` policy is the only
+ * one granting insert. Coaches get `players_coach_update`, so they may edit
+ * players on their own teams but cannot add new ones.
+ */
+export function canViewPlayers(roles: AppRole[]) {
+  return hasRole(roles, "super_admin", "academy_admin", "coach");
+}
+
+export function canCreatePlayers(roles: AppRole[]) {
+  return isAdmin(roles);
+}
+
+export function canEditPlayers(roles: AppRole[]) {
+  return hasRole(roles, "super_admin", "academy_admin", "coach");
+}
+
 export function canRecordAttendance(roles: AppRole[]) {
   return hasRole(roles, "super_admin", "academy_admin", "coach");
 }

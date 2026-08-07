@@ -35,7 +35,6 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Players",
         href: "/dashboard/players",
         roles: ["super_admin", "academy_admin", "coach"],
-        comingSoon: true,
       },
       {
         label: "Teams",
