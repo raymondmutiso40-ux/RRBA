@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "db:bundle": "node scripts/bundle-migrations.mjs"
+    "db:bundle": "node scripts/bundle-migrations.mjs",
+    "env:push": "node scripts/push-env-to-vercel.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",

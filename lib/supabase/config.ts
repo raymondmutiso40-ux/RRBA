@@ -51,6 +51,23 @@ export function getServiceRoleConfig() {
   return { url, serviceRoleKey };
 }
 
+/**
+ * Canonical origin for building absolute links (auth callbacks, emails).
+ *
+ * Falls back to the URLs Vercel injects, so a deployment does not need
+ * NEXT_PUBLIC_SITE_URL set and can never silently emit localhost links in
+ * production. VERCEL_PROJECT_PRODUCTION_URL is the stable domain;
+ * VERCEL_URL is the per-deployment one used on previews.
+ */
 export function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (production) return `https://${production}`;
+
+  const deployment = process.env.VERCEL_URL;
+  if (deployment) return `https://${deployment}`;
+
+  return "http://localhost:3000";
 }
