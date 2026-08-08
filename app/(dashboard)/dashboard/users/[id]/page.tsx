@@ -15,10 +15,12 @@ import { getSessionUser } from "@/lib/auth/session";
 import { canGrantRole, canManageUsers } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { countActiveSuperAdmins, getUser } from "@/lib/admin/queries";
+import { findLinkCandidates, getAccountLink } from "@/lib/identity/queries";
 import { createClient } from "@/lib/supabase/server";
 import { ACCOUNT_STATUSES, APP_ROLES } from "@/lib/validation/schemas";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
+import { AccountLinkControls } from "../account-link-controls";
 import { UserRoleControls } from "../user-role-controls";
 
 export async function generateMetadata({
@@ -34,8 +36,10 @@ export async function generateMetadata({
 
 export default async function UserDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ link?: string }>;
 }) {
   if (!isSupabaseConfigured()) return null;
 
@@ -68,6 +72,14 @@ export default async function UserDetailPage({
   const grantable = APP_ROLES.filter((role) =>
     canGrantRole(actor.roles, role),
   );
+
+  const searchTerm = (await searchParams).link?.trim() ?? "";
+  const linked = await getAccountLink(account.id);
+
+  // Candidates are only worth fetching while there is nothing linked.
+  const candidates = linked
+    ? []
+    : await findLinkCandidates({ email: account.email, search: searchTerm });
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,6 +153,27 @@ export default async function UserDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Linked record</CardTitle>
+          <CardDescription>
+            Which player or family this login belongs to. Roles decide what kind
+            of thing somebody can see; this decides whose. Without it their own
+            pages are empty, because the database has no way to tell that this
+            account and that child are related.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AccountLinkControls
+            userId={account.id}
+            email={account.email}
+            linked={linked}
+            candidates={candidates}
+            searchTerm={searchTerm}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -510,3 +510,23 @@ export const accountStatusSchema = z.object({
   userId: z.string().uuid(),
   status: z.enum(ACCOUNT_STATUSES),
 });
+
+/**
+ * Linking a login to an academy record.
+ *
+ * The kind decides which table is written, and both are checked against the
+ * account before the write — a link is what makes is_player() and
+ * guards_player() true, so getting it wrong hands one family another family's
+ * records.
+ */
+export const accountLinkSchema = z.object({
+  userId: z.string().uuid(),
+  kind: z.enum(["player", "guardian"]),
+  recordId: z.string().uuid("Choose a record"),
+});
+
+export const accountUnlinkSchema = z.object({
+  userId: z.string().uuid(),
+  kind: z.enum(["player", "guardian"]),
+  recordId: z.string().uuid(),
+});
