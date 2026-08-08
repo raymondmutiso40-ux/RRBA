@@ -62,6 +62,40 @@ export function canManageFinance(roles: AppRole[]) {
 }
 
 /**
+ * Finance permissions, mirroring the RLS policies.
+ *
+ * Invoices and payments are readable and writable by admins and the finance
+ * role (invoices_admin_all / invoices_finance_*, payments_admin_all /
+ * payments_finance_all). Coaches are deliberately excluded — they have no
+ * reason to see what a family owes.
+ *
+ * Players and guardians can read their own invoices via invoices_self_read,
+ * but that is a personal view rather than this staff-facing billing area.
+ */
+export function canViewFinance(roles: AppRole[]) {
+  return canManageFinance(roles);
+}
+
+export function canRecordPayments(roles: AppRole[]) {
+  return canManageFinance(roles);
+}
+
+/**
+ * Reversing a confirmed payment rewrites what the academy believes it has
+ * collected, so it is the one finance action limited to admins. RLS would
+ * allow the finance role through (payments_finance_all); this narrows the UI
+ * deliberately, and the action re-checks it.
+ */
+export function canReversePayments(roles: AppRole[]) {
+  return isAdmin(roles);
+}
+
+/** fee_types insert/update allow admins and finance; only admins may delete. */
+export function canManageFeeTypes(roles: AppRole[]) {
+  return canManageFinance(roles);
+}
+
+/**
  * User administration.
  *
  * Both admin roles may activate accounts and grant the everyday roles, which

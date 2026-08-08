@@ -85,13 +85,16 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Invoices",
         href: "/dashboard/invoices",
         roles: ["super_admin", "academy_admin", "finance"],
-        comingSoon: true,
       },
       {
         label: "Payments",
         href: "/dashboard/payments",
         roles: ["super_admin", "academy_admin", "finance"],
-        comingSoon: true,
+      },
+      {
+        label: "Fees",
+        href: "/dashboard/fees",
+        roles: ["super_admin", "academy_admin", "finance"],
       },
     ],
   },

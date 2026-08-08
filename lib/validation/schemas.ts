@@ -260,6 +260,12 @@ export const feeTypeSchema = z.object({
   amount: z.number().positive().max(10_000_000),
   currency: z.string().length(3).toUpperCase().default("KES"),
   interval: z.enum(["one_time", "monthly", "termly", "annual"]),
+  isActive: z.boolean().optional(),
+});
+
+export const feeTypeToggleSchema = z.object({
+  feeTypeId: z.string().uuid(),
+  isActive: z.boolean(),
 });
 
 export const invoiceSchema = z.object({
@@ -284,6 +290,26 @@ export const invoiceSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
     .optional(),
   dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
+})
+  // Mirrors the invoices_period_order CHECK constraint.
+  .refine(
+    (v) => !v.periodStart || !v.periodEnd || v.periodEnd >= v.periodStart,
+    { message: "Period end must not be before the start", path: ["periodEnd"] },
+  );
+
+/** Issuing or voiding an invoice — the whole payload is the invoice itself. */
+export const invoiceActionSchema = z.object({
+  invoiceId: z.string().uuid(),
+});
+
+/**
+ * Voiding carries a reason. An invoice is a document the family has seen, so
+ * cancelling one is a decision worth being able to explain later; the reason
+ * goes to the audit log.
+ */
+export const invoiceVoidSchema = z.object({
+  invoiceId: z.string().uuid(),
+  reason: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
 export const paymentRecordSchema = z.object({
@@ -302,6 +328,20 @@ export const paymentRecordSchema = z.object({
     .optional()
     .or(z.literal("")),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
+  /** Cash in hand is confirmed on the spot; a promised transfer is pending. */
+  isConfirmed: z.boolean().optional(),
+});
+
+/**
+ * Changing where a payment sits in its lifecycle.
+ *
+ * 'pending' is absent on purpose: a payment starts there and never returns,
+ * because re-opening a settled receipt would silently move the invoice
+ * balance back. The action enforces which transitions are legal.
+ */
+export const paymentStateSchema = z.object({
+  paymentId: z.string().uuid(),
+  state: z.enum(["confirmed", "failed", "reversed"]),
 });
 
 export const contactSubmissionSchema = z.object({

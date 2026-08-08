@@ -46,6 +46,14 @@ export type InvoiceStatus =
   | "paid"
   | "void";
 export type PaymentState = "pending" | "confirmed" | "failed" | "reversed";
+export type FeeInterval = "one_time" | "monthly" | "termly" | "annual";
+export type PaymentMethod =
+  | "cash"
+  | "mpesa"
+  | "bank_transfer"
+  | "cheque"
+  | "card"
+  | "other";
 
 export type ApplicationStatus =
   | "pending"
@@ -277,6 +285,28 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["attendance"]["Insert"]>;
         Relationships: [];
       };
+      fee_types: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          amount: number;
+          currency: string;
+          interval: FeeInterval;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          name: string;
+          amount: number;
+          description?: string | null;
+          currency?: string;
+          interval?: FeeInterval;
+          is_active?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["fee_types"]["Insert"]>;
+        Relationships: [];
+      };
       invoices: {
         Row: {
           id: string;
@@ -296,11 +326,13 @@ export interface Database {
           updated_at: string;
         };
         Insert: {
-          invoice_number: string;
           player_id: string;
           description: string;
           amount_due: number;
           due_on: string;
+          // Defaulted by next_invoice_number() since migration 009 — only pass
+          // one to import a number issued outside the system.
+          invoice_number?: string;
           fee_type_id?: string | null;
           currency?: string;
           period_start?: string | null;
@@ -310,6 +342,44 @@ export interface Database {
           created_by?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["invoices"]["Insert"]>;
+        Relationships: [];
+      };
+      payments: {
+        Row: {
+          id: string;
+          receipt_number: string;
+          invoice_id: string;
+          player_id: string;
+          amount: number;
+          currency: string;
+          method: PaymentMethod;
+          state: PaymentState;
+          paid_on: string;
+          reference: string | null;
+          payer_name: string | null;
+          payer_phone: string | null;
+          notes: string | null;
+          recorded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          invoice_id: string;
+          player_id: string;
+          amount: number;
+          method: PaymentMethod;
+          // Defaulted by next_receipt_number() since migration 009.
+          receipt_number?: string;
+          currency?: string;
+          state?: PaymentState;
+          paid_on?: string;
+          reference?: string | null;
+          payer_name?: string | null;
+          payer_phone?: string | null;
+          notes?: string | null;
+          recorded_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["payments"]["Insert"]>;
         Relationships: [];
       };
       contact_submissions: {
@@ -581,6 +651,8 @@ export interface Database {
       attendance_status: AttendanceStatus;
       invoice_status: InvoiceStatus;
       payment_state: PaymentState;
+      fee_interval: FeeInterval;
+      payment_method: PaymentMethod;
     };
   };
 }
