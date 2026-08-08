@@ -131,8 +131,7 @@ const NAV_SECTIONS: NavSection[] = [
       {
         label: "Applications",
         href: "/dashboard/applications",
-        roles: ["super_admin", "academy_admin"],
-        comingSoon: true,
+        roles: ["super_admin", "academy_admin", "coach", "finance"],
       },
       {
         label: "Audit log",

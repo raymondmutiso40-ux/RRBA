@@ -146,7 +146,7 @@ function Hero() {
           {academy.intro}
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-3">
-          <Link href="/signup">
+          <Link href="/apply">
             <Button size="lg" className="shadow-lg shadow-[var(--color-brand-900)]/40">
               Apply to join
               <ArrowRight aria-hidden="true" />
@@ -367,7 +367,7 @@ function CallToAction() {
               first session and find the right age group.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/signup">
+              <Link href="/apply">
                 <Button size="lg">
                   Start an application
                   <ArrowRight aria-hidden="true" />

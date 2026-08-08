@@ -47,6 +47,12 @@ export type InvoiceStatus =
   | "void";
 export type PaymentState = "pending" | "confirmed" | "failed" | "reversed";
 
+export type ApplicationStatus =
+  | "pending"
+  | "approved"
+  | "declined"
+  | "withdrawn";
+
 export interface Database {
   public: {
     Tables: {
@@ -317,6 +323,58 @@ export interface Database {
         };
         Relationships: [];
       };
+      applications: {
+        Row: {
+          id: string;
+          player_first_name: string;
+          player_last_name: string;
+          date_of_birth: string;
+          gender: Gender;
+          position: BasketballPosition | null;
+          school: string | null;
+          previous_experience: string | null;
+          guardian_name: string;
+          guardian_relationship: string;
+          guardian_phone: string;
+          guardian_email: string | null;
+          guardian_alt_phone: string | null;
+          program_interest: string | null;
+          medical_notes: string | null;
+          heard_about_us: string | null;
+          status: ApplicationStatus;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_notes: string | null;
+          created_player_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          player_first_name: string;
+          player_last_name: string;
+          date_of_birth: string;
+          guardian_name: string;
+          guardian_phone: string;
+          gender?: Gender;
+          position?: BasketballPosition | null;
+          school?: string | null;
+          previous_experience?: string | null;
+          guardian_relationship?: string;
+          guardian_email?: string | null;
+          guardian_alt_phone?: string | null;
+          program_interest?: string | null;
+          medical_notes?: string | null;
+          heard_about_us?: string | null;
+        };
+        Update: {
+          status?: ApplicationStatus;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_notes?: string | null;
+          created_player_id?: string | null;
+        };
+        Relationships: [];
+      };
       team_players: {
         Row: {
           id: string;
@@ -474,6 +532,14 @@ export interface Database {
       };
     };
     Functions: {
+      approve_application: {
+        Args: {
+          target_application: string;
+          assign_team?: string | null;
+          notes?: string | null;
+        };
+        Returns: string;
+      };
       has_any_admin: { Args: Record<string, never>; Returns: boolean };
       has_role: { Args: { target_role: AppRole }; Returns: boolean };
       is_admin: { Args: Record<string, never>; Returns: boolean };
@@ -484,6 +550,7 @@ export interface Database {
     Enums: {
       app_role: AppRole;
       account_status: AccountStatus;
+      application_status: ApplicationStatus;
       gender: Gender;
       player_status: PlayerStatus;
       basketball_position: BasketballPosition;

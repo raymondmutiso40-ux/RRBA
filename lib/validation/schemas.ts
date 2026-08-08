@@ -289,3 +289,65 @@ export const contactSubmissionSchema = z.object({
   playerAge: z.number().int().min(3).max(30).optional().nullable(),
   isApplication: z.boolean().optional(),
 });
+
+const optionalText = (max: number) =>
+  z.string().trim().max(max).optional().or(z.literal(""));
+
+const phone = z
+  .string()
+  .trim()
+  .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number");
+
+/**
+ * Public enrolment application — the one form an anonymous visitor can submit.
+ *
+ * Limits mirror the CHECK constraints on the applications table exactly, so a
+ * payload that passes here cannot be rejected by the database, and one that
+ * bypasses the form still hits the same ceiling.
+ */
+export const applicationSchema = z.object({
+  // applications — child
+  playerFirstName: z.string().trim().min(1, "Required").max(100),
+  playerLastName: z.string().trim().min(1, "Required").max(100),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the date picker")
+    .refine((value) => {
+      const date = new Date(`${value}T00:00:00Z`);
+      if (Number.isNaN(date.getTime())) return false;
+      // Matches applications_dob_sane.
+      return date < new Date() && date > new Date("1950-01-01T00:00:00Z");
+    }, "Enter a valid date of birth"),
+  gender: z.enum(["male", "female", "other", "undisclosed"]),
+  position: z
+    .enum([
+      "point_guard",
+      "shooting_guard",
+      "small_forward",
+      "power_forward",
+      "center",
+    ])
+    .optional()
+    .nullable(),
+  school: optionalText(200),
+  previousExperience: optionalText(2000),
+
+  // applications — guardian
+  guardianName: z.string().trim().min(2, "Required").max(160),
+  guardianRelationship: z.string().trim().min(2).max(50),
+  guardianPhone: phone,
+  guardianEmail: z.string().trim().toLowerCase().email().optional().or(z.literal("")),
+  guardianAltPhone: phone.optional().or(z.literal("")),
+
+  // applications — intent
+  programInterest: optionalText(200),
+  medicalNotes: optionalText(2000),
+  heardAboutUs: optionalText(200),
+});
+
+/** Staff decision on an application. */
+export const applicationReviewSchema = z.object({
+  applicationId: z.string().uuid(),
+  teamId: z.string().uuid().optional().nullable(),
+  reviewNotes: optionalText(2000),
+});
