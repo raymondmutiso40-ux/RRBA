@@ -169,6 +169,24 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["players"]["Insert"]>;
         Relationships: [];
       };
+      seasons: {
+        Row: {
+          id: string;
+          name: string;
+          starts_on: string;
+          ends_on: string;
+          is_current: boolean;
+          created_at: string;
+        };
+        Insert: {
+          name: string;
+          starts_on: string;
+          ends_on: string;
+          is_current?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["seasons"]["Insert"]>;
+        Relationships: [];
+      };
       teams: {
         Row: {
           id: string;

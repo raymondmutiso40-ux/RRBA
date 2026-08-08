@@ -165,6 +165,36 @@ export const teamSchema = z.object({
   minAge: z.number().int().min(4).max(30).optional().nullable(),
   maxAge: z.number().int().min(4).max(30).optional().nullable(),
   isActive: z.boolean().optional(),
+})
+  // Mirrors the teams_age_range CHECK constraint, so an impossible range is
+  // rejected in the form rather than as a database error.
+  .refine(
+    (v) => v.minAge == null || v.maxAge == null || v.maxAge >= v.minAge,
+    { message: "Maximum age must not be below minimum age", path: ["maxAge"] },
+  );
+
+/** Adding a player to a team's roster. */
+export const rosterAddSchema = z.object({
+  teamId: z.string().uuid(),
+  playerId: z.string().uuid("Select a player"),
+});
+
+/** Ending a player's spell with a team. */
+export const rosterRemoveSchema = z.object({
+  teamId: z.string().uuid(),
+  membershipId: z.string().uuid(),
+});
+
+/** Assigning a coach to a team. */
+export const coachAssignSchema = z.object({
+  teamId: z.string().uuid(),
+  coachId: z.string().uuid("Select a coach"),
+  isLead: z.boolean().optional(),
+});
+
+export const coachUnassignSchema = z.object({
+  teamId: z.string().uuid(),
+  assignmentId: z.string().uuid(),
 });
 
 export const seasonSchema = z.object({

@@ -84,6 +84,30 @@ export function canEditPlayers(roles: AppRole[]) {
   return hasRole(roles, "super_admin", "academy_admin", "coach");
 }
 
+/**
+ * Team permissions, mirroring the RLS policies.
+ *
+ * Every authenticated user can read teams (teams_read_authenticated), but
+ * teams_admin_write/update/delete and the team_coaches policies are all
+ * admin-only. Roster changes go through team_players_admin_all, so coaches
+ * cannot move players between teams themselves.
+ */
+export function canViewTeams(roles: AppRole[]) {
+  return isStaff(roles);
+}
+
+export function canManageTeams(roles: AppRole[]) {
+  return isAdmin(roles);
+}
+
+export function canManageRoster(roles: AppRole[]) {
+  return isAdmin(roles);
+}
+
+export function canAssignCoaches(roles: AppRole[]) {
+  return isAdmin(roles);
+}
+
 export function canRecordAttendance(roles: AppRole[]) {
   return hasRole(roles, "super_admin", "academy_admin", "coach");
 }
