@@ -558,6 +558,10 @@ export interface Database {
         };
         Returns: string;
       };
+      count_active_super_admins: {
+        Args: { exclude_grant?: string | null };
+        Returns: number;
+      };
       has_any_admin: { Args: Record<string, never>; Returns: boolean };
       has_role: { Args: { target_role: AppRole }; Returns: boolean };
       is_admin: { Args: Record<string, never>; Returns: boolean };

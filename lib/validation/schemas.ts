@@ -381,3 +381,43 @@ export const applicationReviewSchema = z.object({
   teamId: z.string().uuid().optional().nullable(),
   reviewNotes: optionalText(2000),
 });
+
+// ---------------------------------------------------------------------------
+// User administration
+// ---------------------------------------------------------------------------
+
+/**
+ * Role names, mirroring the app_role database enum. Kept as a literal tuple so
+ * a role added to the enum without updating this list is a type error rather
+ * than a silent validation gap.
+ */
+export const APP_ROLES = [
+  "super_admin",
+  "academy_admin",
+  "coach",
+  "finance",
+  "player",
+  "guardian",
+] as const;
+
+export const ACCOUNT_STATUSES = [
+  "pending",
+  "active",
+  "suspended",
+  "archived",
+] as const;
+
+export const grantRoleSchema = z.object({
+  userId: z.string().uuid(),
+  role: z.enum(APP_ROLES),
+});
+
+export const revokeRoleSchema = z.object({
+  userId: z.string().uuid(),
+  roleId: z.string().uuid(),
+});
+
+export const accountStatusSchema = z.object({
+  userId: z.string().uuid(),
+  status: z.enum(ACCOUNT_STATUSES),
+});

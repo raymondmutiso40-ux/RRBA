@@ -61,8 +61,33 @@ export function canManageFinance(roles: AppRole[]) {
   return hasRole(roles, "super_admin", "academy_admin", "finance");
 }
 
+/**
+ * User administration.
+ *
+ * Both admin roles may activate accounts and grant the everyday roles, which
+ * matches the user_roles RLS policies. Granting super_admin is narrower and
+ * enforced by a database trigger, not just here — see canGrantRole.
+ */
 export function canManageUsers(roles: AppRole[]) {
-  return hasRole(roles, "super_admin");
+  return isAdmin(roles);
+}
+
+/**
+ * Whether the actor may grant or revoke a specific role.
+ *
+ * Only an existing super admin can create another one. Without this an
+ * academy admin could promote themselves and take over the account. The
+ * user_roles guard trigger enforces the same rule at the database, so this
+ * check only decides what to render.
+ */
+export function canGrantRole(actorRoles: AppRole[], target: AppRole) {
+  if (!isAdmin(actorRoles)) return false;
+  if (target === "super_admin") return hasRole(actorRoles, "super_admin");
+  return true;
+}
+
+export function canViewAuditLog(roles: AppRole[]) {
+  return isAdmin(roles);
 }
 
 /**

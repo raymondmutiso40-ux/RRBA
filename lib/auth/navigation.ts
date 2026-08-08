@@ -124,8 +124,7 @@ const NAV_SECTIONS: NavSection[] = [
       {
         label: "Users & roles",
         href: "/dashboard/users",
-        roles: ["super_admin"],
-        comingSoon: true,
+        roles: ["super_admin", "academy_admin"],
       },
       {
         label: "Applications",
@@ -135,8 +134,7 @@ const NAV_SECTIONS: NavSection[] = [
       {
         label: "Audit log",
         href: "/dashboard/audit",
-        roles: ["super_admin"],
-        comingSoon: true,
+        roles: ["super_admin", "academy_admin"],
       },
     ],
   },
