@@ -265,6 +265,24 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["events"]["Insert"]>;
         Relationships: [];
       };
+      event_participants: {
+        Row: {
+          id: string;
+          event_id: string;
+          player_id: string;
+          added_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          event_id: string;
+          player_id: string;
+          added_by?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["event_participants"]["Insert"]
+        >;
+        Relationships: [];
+      };
       attendance: {
         Row: {
           id: string;
@@ -281,6 +299,9 @@ export interface Database {
           status?: AttendanceStatus;
           marked_by?: string | null;
           notes?: string | null;
+          // attendance has no updated_at trigger, so a correction has to carry
+          // its own timestamp — otherwise marked_at keeps the original mark.
+          marked_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["attendance"]["Insert"]>;
         Relationships: [];

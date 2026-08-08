@@ -56,7 +56,6 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Training",
         href: "/dashboard/training",
         roles: ["super_admin", "academy_admin", "coach"],
-        comingSoon: true,
       },
       {
         label: "Matches",
@@ -68,7 +67,6 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Attendance",
         href: "/dashboard/attendance",
         roles: ["super_admin", "academy_admin", "coach"],
-        comingSoon: true,
       },
       {
         label: "Development",

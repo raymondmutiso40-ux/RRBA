@@ -167,8 +167,60 @@ export function canAssignCoaches(roles: AppRole[]) {
   return isAdmin(roles);
 }
 
+/**
+ * Training and attendance permissions, mirroring the RLS policies.
+ *
+ * Reading the calendar is open to every authenticated user
+ * (events_read_authenticated) — a schedule is not a secret. Writing is where it
+ * narrows, and the narrowing is per-team rather than per-role, so the helpers
+ * below take the teams the actor actually coaches.
+ *
+ * Finance is excluded from these views: attendance_read has no clause for it,
+ * so the pages would render empty tables for that role.
+ */
+export function canViewTraining(roles: AppRole[]) {
+  return hasRole(roles, "super_admin", "academy_admin", "coach");
+}
+
 export function canRecordAttendance(roles: AppRole[]) {
   return hasRole(roles, "super_admin", "academy_admin", "coach");
+}
+
+/**
+ * Whether the actor may create or edit a session for this team.
+ *
+ * events_coach_write requires `team_id is not null and coaches_team(team_id)`,
+ * so a coach can only touch sessions for a team they currently coach — and
+ * cannot create an academy-wide session at all, since a null team_id fails the
+ * policy outright. Admins have events_admin_write and are unrestricted.
+ */
+export function canManageSession(
+  roles: AppRole[],
+  teamId: string | null,
+  coachedTeamIds: string[],
+) {
+  if (isAdmin(roles)) return true;
+  if (!hasRole(roles, "coach")) return false;
+  return teamId !== null && coachedTeamIds.includes(teamId);
+}
+
+/**
+ * Whether the actor may mark the register for a session.
+ *
+ * Same shape as the session rules: attendance_coach_write reaches through to
+ * the event's team, so a session with no team is admin-only.
+ */
+export function canMarkRegister(
+  roles: AppRole[],
+  teamId: string | null,
+  coachedTeamIds: string[],
+) {
+  return canManageSession(roles, teamId, coachedTeamIds);
+}
+
+/** Only admins may schedule a session that belongs to no team. */
+export function canCreateTeamlessSession(roles: AppRole[]) {
+  return isAdmin(roles);
 }
 
 export function canAssessPlayers(roles: AppRole[]) {

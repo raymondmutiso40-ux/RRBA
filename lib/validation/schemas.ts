@@ -229,6 +229,55 @@ export const eventSchema = z.object({
   result: z.enum(["win", "loss", "draw"]).optional().nullable(),
 });
 
+/**
+ * A training session.
+ *
+ * Narrower than eventSchema, which has to cover matches too: a session has no
+ * opponent or scoreline, and its team is required rather than optional. RLS
+ * refuses a coach any event with a null team_id (events_coach_write), so making
+ * the field optional here would only produce a confusing database error for the
+ * most common author of a session.
+ */
+export const trainingSessionSchema = z
+  .object({
+    // events, filtered to event_type = 'training'
+    teamId: z.string().uuid("Choose a team").optional().nullable(),
+    title: z.string().trim().min(1, "Required").max(200),
+    description: z.string().trim().max(2000).optional().or(z.literal("")),
+    startsAt: z.string().min(1, "Required"),
+    endsAt: z.string().min(1, "Required"),
+    location: z.string().trim().max(200).optional().or(z.literal("")),
+    coachId: z.string().uuid().optional().nullable(),
+    status: z.enum(["scheduled", "completed", "cancelled"]).optional(),
+  })
+  // Mirrors the events_time_order CHECK constraint.
+  .refine((v) => new Date(v.endsAt) > new Date(v.startsAt), {
+    message: "The session must end after it starts",
+    path: ["endsAt"],
+  });
+
+export const sessionStatusSchema = z.object({
+  eventId: z.string().uuid(),
+  status: z.enum(["scheduled", "completed", "cancelled"]),
+});
+
+/**
+ * One player's mark on a register.
+ *
+ * The register submits every row at once, so this validates a single entry and
+ * the action maps it over the form's parallel arrays.
+ */
+export const attendanceMarkSchema = z.object({
+  playerId: z.string().uuid(),
+  status: z.enum(["present", "absent", "late", "excused"]),
+  notes: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const callUpSchema = z.object({
+  eventId: z.string().uuid(),
+  playerId: z.string().uuid("Select a player"),
+});
+
 export const playerMatchStatsSchema = z.object({
   // player_match_stats
   eventId: z.string().uuid(),
