@@ -29,23 +29,37 @@ Runda Ridge Basketball Academy and to manage his player track his payment
 
 3. Apply every file in `supabase/migrations/` in filename order — the names are
    timestamp-prefixed, so lexical order is execution order, and later
-   migrations reference tables the earlier ones create.
+   migrations reference tables and functions the earlier ones create.
 
-   With the Supabase CLI:
-
-   ```bash
-   supabase db push
-   ```
-
-   Or, for the SQL editor, concatenate them into one script first:
+   `db:bundle` concatenates them into one script to paste into the SQL editor,
+   which is the route that works whatever state the database is in:
 
    ```bash
-   npm run db:bundle                    # fresh database — every migration
-   npm run db:bundle -- --since=NAME    # existing one — only what is missing
+   npm run db:bundle                       # fresh database — every migration
+   npm run db:bundle -- --since=NAME       # existing one — only what came after
+   npm run db:bundle -- --only=NAME        # exactly one migration
    ```
 
-   Migrations are not idempotent, so do not re-run the full bundle against a
-   database that already has part of the schema.
+   `NAME` is a full filename or any unique fragment of one. Output goes to
+   `supabase/bundled-schema.sql`, which is generated and gitignored.
+
+   Migrations are **not** idempotent — `create type` and `create table` both
+   error if the object already exists — so pick the flag that matches what the
+   database already has. Running the full bundle against a partly-migrated
+   database is the wrong thing and fails confusingly.
+
+   **On `supabase db push`.** It applies only the migrations absent from the
+   remote `supabase_migrations.schema_migrations` table. That makes it the right
+   tool for a database the CLI has managed from the start, and the wrong one for
+   a database whose schema arrived through the SQL editor: the history table has
+   no record of what was pasted, so push replays the migrations from the
+   beginning and dies on the first `create type`.
+
+   Backfill the history before using it, once per already-applied migration:
+
+   ```bash
+   supabase migration repair --status applied 20260807000100
+   ```
 
 4. Set `BOOTSTRAP_ADMIN_EMAIL` to the address you will sign up with, then
    sign up. The dashboard shows a **Claim admin access** card for that
