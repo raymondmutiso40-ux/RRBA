@@ -262,6 +262,64 @@ export const sessionStatusSchema = z.object({
 });
 
 /**
+ * A fixture.
+ *
+ * Like trainingSessionSchema, narrower than eventSchema — but narrowed in the
+ * other direction. A match has an opponent, which is the one thing that makes
+ * it a match rather than a session, so it is required. The team is required for
+ * the same reason it is on a session: events_coach_write refuses a coach any
+ * event with a null team_id, and a fixture with nobody playing in it is not a
+ * fixture anyway.
+ *
+ * The scoreline is absent here on purpose. A fixture is created before it is
+ * played, so a schema requiring a result could never be satisfied at kick-off —
+ * recording one is matchResultSchema's job.
+ */
+export const matchSchema = z
+  .object({
+    // events, filtered to event_type = 'match'
+    teamId: z.string().uuid("Choose a team"),
+    opponent: z.string().trim().min(1, "Required").max(120),
+    competition: z.string().trim().max(200).optional().or(z.literal("")),
+    isHome: z.boolean(),
+    title: z.string().trim().max(200).optional().or(z.literal("")),
+    description: z.string().trim().max(2000).optional().or(z.literal("")),
+    startsAt: z.string().min(1, "Required"),
+    endsAt: z.string().min(1, "Required"),
+    location: z.string().trim().max(200).optional().or(z.literal("")),
+    coachId: z.string().uuid().optional().nullable(),
+  })
+  // Mirrors the events_time_order CHECK constraint.
+  .refine((v) => new Date(v.endsAt) > new Date(v.startsAt), {
+    message: "The match must end after it starts",
+    path: ["endsAt"],
+  });
+
+/**
+ * The final score.
+ *
+ * `result` is derived from the two scores rather than accepted from the form.
+ * It is the same fact stated twice, and a form that let a coach save a win on a
+ * losing scoreline would put a contradiction in the database that every later
+ * read has to pick a side on.
+ */
+export const matchResultSchema = z
+  .object({
+    eventId: z.string().uuid(),
+    finalScoreTeam: z.number().int().min(0).max(500),
+    finalScoreOpp: z.number().int().min(0).max(500),
+  })
+  .transform((v) => ({
+    ...v,
+    result:
+      v.finalScoreTeam === v.finalScoreOpp
+        ? ("draw" as const)
+        : v.finalScoreTeam > v.finalScoreOpp
+          ? ("win" as const)
+          : ("loss" as const),
+  }));
+
+/**
  * One player's mark on a register.
  *
  * The register submits every row at once, so this validates a single entry and
@@ -278,25 +336,50 @@ export const callUpSchema = z.object({
   playerId: z.string().uuid("Select a player"),
 });
 
-export const playerMatchStatsSchema = z.object({
-  // player_match_stats
-  eventId: z.string().uuid(),
-  playerId: z.string().uuid(),
-  minutesPlayed: z.number().int().min(0).optional().nullable(),
-  points: z.number().int().min(0).optional().nullable(),
-  rebounds: z.number().int().min(0).optional().nullable(),
-  assists: z.number().int().min(0).optional().nullable(),
-  steals: z.number().int().min(0).optional().nullable(),
-  blocks: z.number().int().min(0).optional().nullable(),
-  turnovers: z.number().int().min(0).optional().nullable(),
-  fouls: z.number().int().min(0).optional().nullable(),
-  fgAttempts: z.number().int().min(0).optional().nullable(),
-  fgMade: z.number().int().min(0).optional().nullable(),
-  threeAttempts: z.number().int().min(0).optional().nullable(),
-  threeMade: z.number().int().min(0).optional().nullable(),
-  ftAttempts: z.number().int().min(0).optional().nullable(),
-  ftMade: z.number().int().min(0).optional().nullable(),
-});
+/** A shot count: absent means "not recorded", which is not the same as zero. */
+const shotCount = z.number().int().min(0).max(500).optional().nullable();
+
+export const playerMatchStatsSchema = z
+  .object({
+    // player_match_stats
+    eventId: z.string().uuid(),
+    playerId: z.string().uuid(),
+    minutesPlayed: z.number().int().min(0).max(200).optional().nullable(),
+    points: shotCount,
+    rebounds: shotCount,
+    assists: shotCount,
+    steals: shotCount,
+    blocks: shotCount,
+    turnovers: shotCount,
+    fouls: shotCount,
+    fgAttempts: shotCount,
+    fgMade: shotCount,
+    threeAttempts: shotCount,
+    threeMade: shotCount,
+    ftAttempts: shotCount,
+    ftMade: shotCount,
+  })
+  /*
+   * More made than attempted is a transposed pair of digits, not a game that
+   * happened. The database only checks that each figure is non-negative, so
+   * without this the typo saves cleanly and every shooting percentage computed
+   * from it afterwards is over 100%.
+   *
+   * Checked only when both halves of a pair are present: a coach recording
+   * makes but not attempts is giving partial data, which is allowed.
+   */
+  .refine((v) => v.fgMade == null || v.fgAttempts == null || v.fgMade <= v.fgAttempts, {
+    message: "Field goals made cannot exceed attempts",
+    path: ["fgMade"],
+  })
+  .refine(
+    (v) => v.threeMade == null || v.threeAttempts == null || v.threeMade <= v.threeAttempts,
+    { message: "Three-pointers made cannot exceed attempts", path: ["threeMade"] },
+  )
+  .refine((v) => v.ftMade == null || v.ftAttempts == null || v.ftMade <= v.ftAttempts, {
+    message: "Free throws made cannot exceed attempts",
+    path: ["ftMade"],
+  });
 
 // ---------------------------------------------------------------------------
 // Finance

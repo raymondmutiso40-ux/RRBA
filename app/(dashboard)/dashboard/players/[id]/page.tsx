@@ -32,6 +32,8 @@ import {
   playerFullName,
   statusTone,
 } from "@/lib/players/labels";
+import { getPlayerMatchLines } from "@/lib/matches/queries";
+import { PlayerMatchRecord } from "@/components/matches/player-match-record";
 import { calculateAge, formatDate, getInitials } from "@/lib/utils";
 
 export async function generateMetadata({
@@ -64,9 +66,10 @@ export default async function PlayerProfilePage({
   // "does not exist" are indistinguishable here — both are a 404.
   if (!player) return notFound();
 
-  const [teams, guardians] = await Promise.all([
+  const [teams, guardians, matchLines] = await Promise.all([
     getPlayerTeams(player.id),
     getPlayerGuardians(player.id),
+    getPlayerMatchLines(player.id),
   ]);
 
   // Medical data is fetched only for roles allowed to see it. Finance staff
@@ -302,6 +305,19 @@ export default async function PlayerProfilePage({
           </Card>
         ) : null}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Match record</CardTitle>
+          <CardDescription>
+            Averages across the games this player has a box score for, and the
+            lines behind them.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PlayerMatchRecord lines={matchLines} />
+        </CardContent>
+      </Card>
 
       {player.notes ? (
         <Card>

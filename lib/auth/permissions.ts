@@ -223,6 +223,49 @@ export function canCreateTeamlessSession(roles: AppRole[]) {
   return isAdmin(roles);
 }
 
+/**
+ * Match permissions.
+ *
+ * Fixtures are rows in the same events table as training, so the write rules
+ * are literally the same policies — canManageMatch is canManageSession under a
+ * name that reads correctly at the call site, rather than a second rule that
+ * could drift from the first.
+ *
+ * Reading is narrowed to staff to match the nav entry, even though
+ * events_read_authenticated would let any signed-in user see the calendar. A
+ * family sees their own fixtures through /dashboard/my-schedule instead.
+ */
+export function canViewMatches(roles: AppRole[]) {
+  return hasRole(roles, "super_admin", "academy_admin", "coach");
+}
+
+export function canManageMatch(
+  roles: AppRole[],
+  teamId: string | null,
+  coachedTeamIds: string[],
+) {
+  return canManageSession(roles, teamId, coachedTeamIds);
+}
+
+/**
+ * Whether the actor may enter a box score for this match.
+ *
+ * player_match_stats_coach_write reaches through to the event's team, so a
+ * coach may only record stats for a match their own team played — and a match
+ * with no team is admin-only, exactly as with a register.
+ *
+ * Note there is no delete policy on player_match_stats at all, for anybody.
+ * A recorded stat line is corrected by overwriting it, so nothing in the UI
+ * offers to remove one.
+ */
+export function canRecordMatchStats(
+  roles: AppRole[],
+  teamId: string | null,
+  coachedTeamIds: string[],
+) {
+  return canManageSession(roles, teamId, coachedTeamIds);
+}
+
 export function canAssessPlayers(roles: AppRole[]) {
   return hasRole(roles, "super_admin", "academy_admin", "coach");
 }

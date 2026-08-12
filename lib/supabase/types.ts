@@ -38,6 +38,7 @@ export type BasketballPosition =
 
 export type EventType = "training" | "match";
 export type EventStatus = "scheduled" | "completed" | "cancelled";
+export type MatchResult = "win" | "loss" | "draw";
 export type AttendanceStatus = "present" | "absent" | "late" | "excused";
 export type InvoiceStatus =
   | "draft"
@@ -241,7 +242,7 @@ export interface Database {
           is_home: boolean | null;
           final_score_team: number | null;
           final_score_opp: number | null;
-          result: "win" | "loss" | "draw" | null;
+          result: MatchResult | null;
           stats_recorded: boolean;
           created_by: string | null;
           created_at: string;
@@ -260,6 +261,12 @@ export interface Database {
           opponent?: string | null;
           competition?: string | null;
           is_home?: boolean | null;
+          // Null until a match is played. Writable so recording a result is an
+          // update rather than a second table.
+          final_score_team?: number | null;
+          final_score_opp?: number | null;
+          result?: MatchResult | null;
+          stats_recorded?: boolean;
           created_by?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["events"]["Insert"]>;
@@ -304,6 +311,130 @@ export interface Database {
           marked_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["attendance"]["Insert"]>;
+        Relationships: [];
+      };
+      player_match_stats: {
+        Row: {
+          id: string;
+          event_id: string;
+          player_id: string;
+          minutes_played: number | null;
+          points: number | null;
+          rebounds: number | null;
+          assists: number | null;
+          steals: number | null;
+          blocks: number | null;
+          turnovers: number | null;
+          fouls: number | null;
+          fg_attempts: number | null;
+          fg_made: number | null;
+          three_attempts: number | null;
+          three_made: number | null;
+          ft_attempts: number | null;
+          ft_made: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          event_id: string;
+          player_id: string;
+          // Every stat is optional: a coach who only has points and rebounds to
+          // hand should be able to save those without inventing the rest, and
+          // null reads as "not recorded" rather than as zero.
+          minutes_played?: number | null;
+          points?: number | null;
+          rebounds?: number | null;
+          assists?: number | null;
+          steals?: number | null;
+          blocks?: number | null;
+          turnovers?: number | null;
+          fouls?: number | null;
+          fg_attempts?: number | null;
+          fg_made?: number | null;
+          three_attempts?: number | null;
+          three_made?: number | null;
+          ft_attempts?: number | null;
+          ft_made?: number | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["player_match_stats"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      skill_metrics: {
+        Row: {
+          id: string;
+          code: string;
+          label: string;
+          category: string;
+          description: string | null;
+          sort_order: number;
+          is_active: boolean;
+        };
+        Insert: {
+          code: string;
+          label: string;
+          category?: string;
+          description?: string | null;
+          sort_order?: number;
+          is_active?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["skill_metrics"]["Insert"]>;
+        Relationships: [];
+      };
+      assessments: {
+        Row: {
+          id: string;
+          player_id: string;
+          assessed_by: string;
+          event_id: string | null;
+          assessed_on: string;
+          summary: string | null;
+          created_at: string;
+        };
+        Insert: {
+          player_id: string;
+          assessed_by: string;
+          event_id?: string | null;
+          assessed_on?: string;
+          summary?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["assessments"]["Insert"]>;
+        Relationships: [];
+      };
+      assessment_scores: {
+        Row: {
+          id: string;
+          assessment_id: string;
+          metric_id: string;
+          score: number;
+        };
+        Insert: {
+          assessment_id: string;
+          metric_id: string;
+          score: number;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["assessment_scores"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      development_notes: {
+        Row: {
+          id: string;
+          player_id: string;
+          coach_id: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: {
+          player_id: string;
+          coach_id: string;
+          note: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["development_notes"]["Insert"]
+        >;
         Relationships: [];
       };
       fee_types: {
@@ -669,6 +800,7 @@ export interface Database {
       basketball_position: BasketballPosition;
       event_type: EventType;
       event_status: EventStatus;
+      match_result: MatchResult;
       attendance_status: AttendanceStatus;
       invoice_status: InvoiceStatus;
       payment_state: PaymentState;

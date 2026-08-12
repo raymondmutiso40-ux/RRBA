@@ -60,7 +60,6 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Matches",
         href: "/dashboard/matches",
         roles: ["super_admin", "academy_admin", "coach"],
-        comingSoon: true,
       },
       {
         label: "Attendance",
