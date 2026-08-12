@@ -6,8 +6,6 @@ export type NavItem = {
   href: string;
   /** Roles allowed to see this item. Empty means every signed-in user. */
   roles: AppRole[];
-  /** Rendered when the destination has no page yet (M0). */
-  comingSoon?: boolean;
 };
 
 export type NavSection = {
@@ -70,7 +68,6 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Development",
         href: "/dashboard/development",
         roles: ["super_admin", "academy_admin", "coach"],
-        comingSoon: true,
       },
     ],
   },

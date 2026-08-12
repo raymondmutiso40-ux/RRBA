@@ -21,7 +21,20 @@ import { formatDate } from "@/lib/utils";
  * same rows through different RLS paths (coaches_player versus is_player /
  * guards_player) and neither should have to know about the other.
  */
-export function PlayerMatchRecord({ lines }: { lines: PlayerMatchLine[] }) {
+export function PlayerMatchRecord({
+  lines,
+  /**
+   * Whether each row links through to the fixture.
+   *
+   * Off for the family's own view: /dashboard/matches is staff-only, so a
+   * parent following the link would land on a refusal. They can see their
+   * child's line here and the fixture itself under My schedule.
+   */
+  linkToMatch = true,
+}: {
+  lines: PlayerMatchLine[];
+  linkToMatch?: boolean;
+}) {
   if (lines.length === 0) {
     return (
       <p className="text-sm text-[var(--foreground-muted)]">
@@ -92,12 +105,18 @@ export function PlayerMatchRecord({ lines }: { lines: PlayerMatchLine[] }) {
             {lines.map((line) => (
               <tr key={line.id}>
                 <th scope="row" className="px-3 py-2 text-left font-normal">
-                  <Link
-                    href={`/dashboard/matches/${line.event_id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {line.opponent ?? "Match"}
-                  </Link>
+                  {linkToMatch ? (
+                    <Link
+                      href={`/dashboard/matches/${line.event_id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {line.opponent ?? "Match"}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">
+                      {line.opponent ?? "Match"}
+                    </span>
+                  )}
                   <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
                     {formatDate(line.starts_at)}
                     {formatScoreline(line) ? (

@@ -28,25 +28,14 @@ export function SidebarNav({ sections }: { sections: NavSection[] }) {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                aria-disabled={item.comingSoon || undefined}
                 className={cn(
-                  "flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "rounded-lg px-3 py-2 text-sm transition-colors",
                   isActive
                     ? "bg-[var(--surface-muted)] font-medium text-[var(--foreground)]"
                     : "text-[var(--foreground-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
-                  item.comingSoon && "cursor-default opacity-60",
                 )}
-                onClick={(event) => {
-                  // The route does not exist yet; don't navigate to a 404.
-                  if (item.comingSoon) event.preventDefault();
-                }}
               >
-                <span>{item.label}</span>
-                {item.comingSoon ? (
-                  <span className="text-[10px] tracking-wide text-[var(--foreground-muted)] uppercase">
-                    Soon
-                  </span>
-                ) : null}
+                {item.label}
               </Link>
             );
           })}

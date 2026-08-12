@@ -266,8 +266,51 @@ export function canRecordMatchStats(
   return canManageSession(roles, teamId, coachedTeamIds);
 }
 
+/**
+ * Development permissions, mirroring the RLS policies.
+ *
+ * The narrowing here is per-player rather than per-team: assessments_coach_write
+ * and development_notes_coach_write both check coaches_player(player_id), which
+ * reaches through team_players to team_coaches. So a coach may assess anyone on
+ * a team they currently coach, and nobody else.
+ *
+ * Reading is wider than writing — assessments_read also admits the player and
+ * their guardians — but that is the family's own view, not this staff area.
+ */
 export function canAssessPlayers(roles: AppRole[]) {
   return hasRole(roles, "super_admin", "academy_admin", "coach");
+}
+
+/** Whether the actor may assess or write notes on this particular player. */
+export function canAssessPlayer(
+  roles: AppRole[],
+  playerId: string,
+  coachedPlayerIds: string[],
+) {
+  if (isAdmin(roles)) return true;
+  if (!hasRole(roles, "coach")) return false;
+  return coachedPlayerIds.includes(playerId);
+}
+
+/**
+ * Whether the actor may change an assessment that already exists.
+ *
+ * Narrower than creating one. assessments_coach_update requires
+ * `assessed_by = auth.uid()` on top of coaches_player, so a coach may correct
+ * their own assessment but not overwrite a colleague's judgement of the same
+ * player. Admins have assessments_admin_all and are unrestricted.
+ */
+export function canEditAssessment(
+  roles: AppRole[],
+  assessedBy: string,
+  actorId: string,
+  playerId: string,
+  coachedPlayerIds: string[],
+) {
+  if (isAdmin(roles)) return true;
+  return (
+    assessedBy === actorId && canAssessPlayer(roles, playerId, coachedPlayerIds)
+  );
 }
 
 /** The role whose dashboard a multi-role user lands on. */

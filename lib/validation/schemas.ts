@@ -382,6 +382,47 @@ export const playerMatchStatsSchema = z
   });
 
 // ---------------------------------------------------------------------------
+// Development
+// ---------------------------------------------------------------------------
+
+/**
+ * A coach's assessment of one player.
+ *
+ * The scores themselves are not here: there is one per skill_metrics row, so
+ * the set is data rather than a fixed shape, and the action validates each
+ * against assessmentScoreSchema as it walks the form.
+ */
+export const assessmentSchema = z.object({
+  // assessments
+  playerId: z.string().uuid(),
+  assessedOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD")
+    // Mirrors the assessments_future CHECK constraint. Compared as strings
+    // against the local date, which is what the date input submits.
+    .refine((value) => {
+      const today = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const local = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      return value <= local;
+    }, "An assessment cannot be dated in the future"),
+  eventId: z.string().uuid().optional().nullable(),
+  summary: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+/** One skill's mark. Mirrors the assessment_scores_range CHECK constraint. */
+export const assessmentScoreSchema = z.object({
+  metricId: z.string().uuid(),
+  score: z.number().int().min(1, "1–10").max(10, "1–10"),
+});
+
+export const developmentNoteSchema = z.object({
+  // development_notes
+  playerId: z.string().uuid(),
+  note: z.string().trim().min(1, "Write something").max(2000),
+});
+
+// ---------------------------------------------------------------------------
 // Finance
 // ---------------------------------------------------------------------------
 

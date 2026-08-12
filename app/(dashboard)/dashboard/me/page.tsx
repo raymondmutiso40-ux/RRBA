@@ -10,9 +10,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { NoChildren, NotLinked } from "@/components/me/not-linked";
+import { ScoreMeter } from "@/components/development/score-meter";
+import { PlayerMatchRecord } from "@/components/matches/player-match-record";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getMyAttendance, getMyIdentity } from "@/lib/me/queries";
+import { getPlayerMatchLines } from "@/lib/matches/queries";
+import {
+  getPlayerDevelopment,
+  listSkillMetrics,
+} from "@/lib/development/queries";
+import {
+  SCORE_MAX,
+  compareCategories,
+  formatScore,
+  skillCategoryLabel,
+} from "@/lib/development/labels";
 import {
   ATTENDANCE_STATUS_LABELS,
   attendanceRate,
@@ -20,7 +33,7 @@ import {
   rateTone,
 } from "@/lib/activity/labels";
 import { POSITION_LABELS, PLAYER_STATUS_LABELS } from "@/lib/players/labels";
-import { calculateAge } from "@/lib/utils";
+import { calculateAge, formatDate } from "@/lib/utils";
 import type { BasketballPosition, PlayerStatus } from "@/lib/supabase/types";
 
 export const metadata: Metadata = { title: "My profile" };
@@ -36,8 +49,33 @@ export default async function MyProfilePage() {
   if (identity.kind === null) return <NotLinked what="profile" />;
   if (identity.players.length === 0) return <NoChildren />;
 
-  const attendance = await getMyAttendance(identity.players);
   const isGuardian = identity.kind === "guardian";
+
+  /*
+   * The development and match records come back through the family's own RLS
+   * path — assessments_read and player_match_stats_read both admit
+   * is_player() and guards_player() — so this is the same data a coach sees,
+   * read under the family's own permission rather than handed to them.
+   */
+  const [attendance, metrics, records] = await Promise.all([
+    getMyAttendance(identity.players),
+    listSkillMetrics(),
+    Promise.all(
+      identity.players.map(async (player) => ({
+        playerId: player.id,
+        development: await getPlayerDevelopment(player.id),
+        matchLines: await getPlayerMatchLines(player.id, 10),
+      })),
+    ),
+  ]);
+
+  const recordsByPlayer = new Map(
+    records.map((record) => [record.playerId, record]),
+  );
+
+  const categories = [...new Set(metrics.map((metric) => metric.category))].sort(
+    compareCategories,
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,6 +97,20 @@ export default async function MyProfilePage() {
       {identity.players.map((player) => {
         const tally = attendance.get(player.id);
         const rate = tally ? attendanceRate(tally.counts) : null;
+
+        const record = recordsByPlayer.get(player.id);
+        const latest = record?.development.assessments[0];
+        const previous = record?.development.assessments[1];
+
+        const latestScores = new Map(
+          (latest?.scores ?? []).map((score) => [score.metric_id, score.score]),
+        );
+        const previousScores = new Map(
+          (previous?.scores ?? []).map((score) => [
+            score.metric_id,
+            score.score,
+          ]),
+        );
 
         return (
           <Card key={player.id}>
@@ -140,6 +192,68 @@ export default async function MyProfilePage() {
                   </dl>
                 </div>
               ) : null}
+
+              <div className="border-t border-[var(--border-color)] pt-4">
+                <p className="flex flex-wrap items-baseline gap-2 text-xs tracking-wide text-[var(--foreground-muted)] uppercase">
+                  Development
+                  {latest ? (
+                    <span className="normal-case">
+                      · assessed {formatDate(latest.assessed_on)} ·{" "}
+                      {formatScore(latest.average)}/{SCORE_MAX} average
+                    </span>
+                  ) : null}
+                </p>
+
+                {latest ? (
+                  <>
+                    <div className="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                      {categories.map((category) => (
+                        <section key={category} className="flex flex-col gap-3">
+                          <h3 className="text-xs font-medium text-[var(--foreground-muted)]">
+                            {skillCategoryLabel(category)}
+                          </h3>
+                          {metrics
+                            .filter((metric) => metric.category === category)
+                            .map((metric) => (
+                              <ScoreMeter
+                                key={metric.id}
+                                label={metric.label}
+                                score={latestScores.get(metric.id) ?? null}
+                                previous={previousScores.get(metric.id) ?? null}
+                              />
+                            ))}
+                        </section>
+                      ))}
+                    </div>
+
+                    {latest.summary ? (
+                      <p className="mt-4 text-sm whitespace-pre-wrap">
+                        {latest.summary}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-xs text-[var(--foreground-muted)]">
+                      Assessed by {latest.assessor_name ?? "a coach"}.
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-[var(--foreground-muted)]">
+                    No assessment yet. Coaches record these periodically across
+                    twelve skills, and the marks appear here once they do.
+                  </p>
+                )}
+              </div>
+
+              <div className="border-t border-[var(--border-color)] pt-4">
+                <p className="text-xs tracking-wide text-[var(--foreground-muted)] uppercase">
+                  Match record
+                </p>
+                <div className="mt-3">
+                  <PlayerMatchRecord
+                    lines={record?.matchLines ?? []}
+                    linkToMatch={false}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         );
