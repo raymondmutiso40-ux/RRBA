@@ -45,7 +45,14 @@ export async function listMatches(
 
   let query = supabase
     .from("events")
-    .select("*, teams (name), profiles (full_name), player_match_stats (id)")
+    // The profiles embed must name its foreign key: events reaches profiles
+    // through both coach_id and created_by, and PostgREST rejects the
+    // ambiguity (PGRST201) rather than picking one. coach_name is what this
+    // maps to, so coach_id is the side that matters.
+    .select(
+      "*, teams (name), profiles!events_coach_id_fkey (full_name), " +
+        "player_match_stats (id)",
+    )
     .eq("event_type", MATCH)
     .limit(params.limit ?? DEFAULT_LIMIT);
 
@@ -98,7 +105,8 @@ export async function getMatch(id: string): Promise<MatchDetail | null> {
 
   const { data, error } = await supabase
     .from("events")
-    .select("*, teams (name), profiles (full_name)")
+    // Named foreign key, for the same reason as listMatches above.
+    .select("*, teams (name), profiles!events_coach_id_fkey (full_name)")
     .eq("id", id)
     .eq("event_type", MATCH)
     .maybeSingle();

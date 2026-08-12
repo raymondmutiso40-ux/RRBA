@@ -47,8 +47,14 @@ export async function listSessions(
 
   let query = supabase
     .from("events")
+    // The profiles embed must name its foreign key. events reaches profiles
+    // twice — coach_id and created_by — and PostgREST refuses an ambiguous
+    // embed outright (PGRST201) rather than guessing, which this function then
+    // throws on. The coach is the one worth showing; who created the row is an
+    // audit detail.
     .select(
-      "*, teams (name), profiles (full_name), attendance (id), event_participants (id)",
+      "*, teams (name), profiles!events_coach_id_fkey (full_name), " +
+        "attendance (id), event_participants (id)",
     )
     .eq("event_type", TRAINING)
     .limit(params.limit ?? DEFAULT_LIMIT);
@@ -152,7 +158,8 @@ export async function getSession(id: string): Promise<SessionDetail | null> {
 
   const { data, error } = await supabase
     .from("events")
-    .select("*, teams (name), profiles (full_name)")
+    // Named foreign key, for the same reason as listSessions above.
+    .select("*, teams (name), profiles!events_coach_id_fkey (full_name)")
     .eq("id", id)
     .eq("event_type", TRAINING)
     .maybeSingle();
