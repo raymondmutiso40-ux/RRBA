@@ -61,7 +61,23 @@ Runda Ridge Basketball Academy and to manage his player track his payment
    supabase migration repair --status applied 20260807000100
    ```
 
-4. Set `BOOTSTRAP_ADMIN_EMAIL` to the address you will sign up with, then
+4. Allow-list the app's URLs for auth emails, under **Authentication → URL
+   Configuration** in the Supabase dashboard:
+
+   ```
+   Site URL       https://your-domain.example        (the deployed app)
+   Redirect URLs  https://your-domain.example/**
+                  http://localhost:3000/**
+   ```
+
+   Confirmation and password-reset emails carry a `redirect_to` pointing back at
+   `/auth/callback`, and Supabase honours it **only** if it matches an
+   allow-listed pattern. When it does not, the link silently falls back to Site
+   URL — so a parent clicking "reset password" lands on Supabase's own pages
+   instead of the app, with no error to explain it. Add every origin the app is
+   served from, including localhost for development.
+
+5. Set `BOOTSTRAP_ADMIN_EMAIL` to the address you will sign up with, then
    sign up. The dashboard shows a **Claim admin access** card for that
    account — one click makes you super admin and activates your account. No
    SQL required.
@@ -74,7 +90,7 @@ Runda Ridge Basketball Academy and to manage his player track his payment
 
    Every later user is activated and granted a role from the admin UI.
 
-5. Run the dev server:
+6. Run the dev server:
 
    ```bash
    npm run dev
