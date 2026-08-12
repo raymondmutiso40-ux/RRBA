@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 
+import { AuthErrorNotice } from "@/components/auth/auth-error-notice";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoginForm } from "./login-form";
 
@@ -18,6 +19,9 @@ export default function LoginPage() {
           Access your RRBA academy dashboard.
         </p>
       </div>
+
+      {/* Where a failed email link ends up, so this is where it gets explained. */}
+      <AuthErrorNotice />
 
       {/* LoginForm reads ?next= via useSearchParams, which is only known at
           request time — Suspense lets the rest of the page prerender. */}

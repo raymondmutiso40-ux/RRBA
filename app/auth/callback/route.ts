@@ -20,7 +20,15 @@ export async function GET(request: NextRequest) {
     next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=missing_code`);
+    // Supabase reports a failed verify in the fragment, which never reaches the
+    // server — AuthErrorNotice reads that in the browser. Some flows put it in
+    // the query instead, and that much can be carried over so the reason
+    // survives this hop rather than being flattened to "missing_code".
+    const reported = searchParams.get("error_code") ?? searchParams.get("error");
+
+    return NextResponse.redirect(
+      `${origin}/login?error=${encodeURIComponent(reported ?? "missing_code")}`,
+    );
   }
 
   const supabase = await createClient();

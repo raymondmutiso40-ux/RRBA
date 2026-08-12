@@ -56,7 +56,15 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (isAuthPage && user) {
+  // Sending a signed-in visitor on to the dashboard is right, except when the
+  // page is carrying the explanation for a link that just failed. A parent's
+  // expired reset link, opened in a browser where somebody else is already
+  // signed in, would otherwise land on that person's dashboard with the reason
+  // discarded — which reads as the app being broken rather than the link being
+  // stale.
+  const hasAuthError = request.nextUrl.searchParams.has("error");
+
+  if (isAuthPage && user && !hasAuthError) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/dashboard";
     redirectUrl.search = "";

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AuthErrorNotice } from "@/components/auth/auth-error-notice";
 import { UpdatePasswordForm } from "./update-password-form";
 
 export const metadata: Metadata = {
@@ -17,6 +18,13 @@ export default function UpdatePasswordPage() {
           Enter a new password for your account.
         </p>
       </div>
+
+      {/*
+        Reachable with a failed link too: Supabase redirects to redirect_to even
+        when verification fails, so this page can load with an error fragment
+        and no session behind it.
+      */}
+      <AuthErrorNotice />
 
       <UpdatePasswordForm />
     </div>
