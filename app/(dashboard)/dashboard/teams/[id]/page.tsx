@@ -17,6 +17,7 @@ import {
   canAssignCoaches,
   canManageRoster,
   canManageTeams,
+  canManageUsers,
   canViewTeams,
 } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -143,6 +144,7 @@ export default async function TeamDetailPage({
               coaches={coaches}
               assignable={assignableCoaches}
               canManage={manageCoaches}
+              canViewDirectory={canManageUsers(user.roles)}
             />
           </CardContent>
         </Card>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -22,11 +23,14 @@ export function TeamCoaches({
   coaches,
   assignable,
   canManage,
+  canViewDirectory = false,
 }: {
   teamId: string;
   coaches: TeamCoach[];
   assignable: AssignableCoach[];
   canManage: boolean;
+  /** The coach directory is admin-only, so only admins get the name as a link. */
+  canViewDirectory?: boolean;
 }) {
   const [assignState, assign, assigning] = useActionState<
     TeamActionState,
@@ -111,7 +115,16 @@ export function TeamCoaches({
             >
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-sm font-medium">
-                  {coach.full_name}
+                  {canViewDirectory ? (
+                    <Link
+                      href={`/dashboard/coaches/${coach.coach_id}`}
+                      className="hover:underline"
+                    >
+                      {coach.full_name}
+                    </Link>
+                  ) : (
+                    coach.full_name
+                  )}
                   {coach.is_lead ? <Badge tone="brand">Lead</Badge> : null}
                 </p>
                 <p className="text-xs text-[var(--foreground-muted)]">
