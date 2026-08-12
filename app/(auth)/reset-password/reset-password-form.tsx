@@ -10,12 +10,15 @@ import { authRequestResetSchema } from "@/lib/validation/schemas";
 
 export function ResetPasswordForm() {
   const [fieldError, setFieldError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFieldError(undefined);
+
+    setFormError(null);
 
     const formData = new FormData(event.currentTarget);
     const parsed = authRequestResetSchema.safeParse({
@@ -30,12 +33,30 @@ export function ResetPasswordForm() {
     setLoading(true);
 
     const supabase = createClient();
-    await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      parsed.data.email,
+      {
+        redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+      },
+    );
 
-    // Always report success. Revealing whether an address is registered would
-    // let anyone enumerate the academy's user accounts.
+    // A send-rate limit is the one failure worth reporting. It says nothing
+    // about whether the address exists — it is a property of the project, not
+    // the account — so showing it gives an enumerator nothing, while hiding it
+    // leaves a parent waiting for an email that is never coming. Which is
+    // exactly what happened: the built-in email service allows only a couple of
+    // messages an hour, and this form reported "check your email" regardless.
+    if (error?.status === 429 || error?.code === "over_email_send_rate_limit") {
+      setFormError(
+        "Too many emails have been requested recently. Wait about an hour and " +
+          "try again, or ask an administrator to send you a link directly.",
+      );
+      setLoading(false);
+      return;
+    }
+
+    // Every other outcome reports success. Revealing whether an address is
+    // registered would let anyone enumerate the academy's user accounts.
     setSubmitted(true);
     setLoading(false);
   }
@@ -53,6 +74,8 @@ export function ResetPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      {formError ? <Alert tone="warning">{formError}</Alert> : null}
+
       <Input
         name="email"
         type="email"
