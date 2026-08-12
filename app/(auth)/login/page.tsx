@@ -32,13 +32,18 @@ export default function LoginPage() {
         >
           Forgot your password?
         </Link>
+        {/*
+          Points at the application rather than /signup: for a parent those are
+          now the same act, and the application is the one that also enrols a
+          child. Staff accounts still come from /signup directly.
+        */}
         <p>
-          Don&apos;t have an account?{" "}
+          New to the academy?{" "}
           <Link
-            href="/signup"
+            href="/apply"
             className="font-medium text-[var(--primary)] hover:underline"
           >
-            Create one
+            Apply to join
           </Link>
         </p>
       </div>

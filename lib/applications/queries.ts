@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ApplicationStatus, Tables } from "@/lib/supabase/types";
+import type { AccountStatus, ApplicationStatus, Tables } from "@/lib/supabase/types";
 
 export type Application = Tables<"applications">;
 
@@ -73,7 +73,21 @@ export async function listApplications(
   };
 }
 
-export async function getApplication(id: string): Promise<Application | null> {
+/** The account that submitted an application, when it carries one. */
+export type ApplicationSubmitter = {
+  id: string;
+  fullName: string;
+  email: string;
+  status: AccountStatus;
+};
+
+export type ApplicationDetail = Application & {
+  submitter: ApplicationSubmitter | null;
+};
+
+export async function getApplication(
+  id: string,
+): Promise<ApplicationDetail | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -86,7 +100,34 @@ export async function getApplication(id: string): Promise<Application | null> {
     throw new Error(`Could not load application: ${error.message}`);
   }
 
-  return data;
+  if (!data) return null;
+
+  // A second query rather than an embed. applications reaches profiles twice —
+  // submitted_by and reviewed_by — so `profiles (...)` would be ambiguous and
+  // PostgREST would reject it (PGRST201). A named foreign key would work, but
+  // this reads without the reader having to know which key was meant.
+  //
+  // profiles_staff_read covers this: only staff reach the review screen.
+  let submitter: ApplicationSubmitter | null = null;
+
+  if (data.submitted_by) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, status")
+      .eq("id", data.submitted_by)
+      .maybeSingle();
+
+    if (profile) {
+      submitter = {
+        id: profile.id,
+        fullName: profile.full_name,
+        email: profile.email,
+        status: profile.status,
+      };
+    }
+  }
+
+  return { ...data, submitter };
 }
 
 /** Count of applications awaiting a decision, for the nav badge. */

@@ -612,6 +612,7 @@ export interface Database {
           reviewed_at: string | null;
           review_notes: string | null;
           created_player_id: string | null;
+          submitted_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -631,6 +632,13 @@ export interface Database {
           program_interest?: string | null;
           medical_notes?: string | null;
           heard_about_us?: string | null;
+          /**
+           * Only ever set on the service-role path, which is the only caller
+           * that knows the id is genuinely the submitter's.
+           * applications_insert_public rejects a non-null value, so an
+           * anonymous or ordinary signed-in insert cannot claim an account.
+           */
+          submitted_by?: string | null;
         };
         Update: {
           status?: ApplicationStatus;

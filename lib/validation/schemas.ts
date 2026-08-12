@@ -603,7 +603,22 @@ export const applicationSchema = z.object({
   guardianName: z.string().trim().min(2, "Required").max(160),
   guardianRelationship: z.string().trim().min(2).max(50),
   guardianPhone: phone,
-  guardianEmail: z.string().trim().toLowerCase().email().optional().or(z.literal("")),
+  // Required, unlike the other guardian fields: the application now creates
+  // the parent's login, and the address is both the username and where the
+  // confirmation link goes.
+  guardianEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Enter a valid email address"),
+  // Same rules as authSignUpSchema — it is the same account being created, so
+  // a password accepted here must be accepted at /login.
+  password: z
+    .string()
+    .min(8, "At least 8 characters")
+    .max(128)
+    .regex(/[A-Za-z]/, "Include at least one letter")
+    .regex(/[0-9]/, "Include at least one number"),
   guardianAltPhone: phone.optional().or(z.literal("")),
 
   // applications — intent

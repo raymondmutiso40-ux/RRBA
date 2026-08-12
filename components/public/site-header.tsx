@@ -39,8 +39,13 @@ export function SiteHeader() {
               Sign in
             </Button>
           </Link>
-          <Link href="/signup">
-            <Button size="sm">Register</Button>
+          {/*
+            Applying is registering — the form creates the parent's account — so
+            the site offers one way in rather than two that a parent has to tell
+            apart. /signup still exists for staff, just unadvertised.
+          */}
+          <Link href="/apply">
+            <Button size="sm">Apply to join</Button>
           </Link>
         </nav>
       </div>

@@ -33,6 +33,19 @@ export function isSupabaseConfigured() {
 }
 
 /**
+ * Whether the service-role key is available.
+ *
+ * The key is optional, so anything that needs it has to be able to carry on
+ * without it. Callers use this to choose a lesser path rather than failing —
+ * enrolment still takes an application when it cannot also create the login.
+ */
+export function isServiceRoleConfigured() {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
+  );
+}
+
+/**
  * Service-role config. Server-only — this key bypasses row-level security
  * entirely, so importing it into a client component would hand every visitor
  * unrestricted database access.

@@ -153,6 +153,40 @@ export default async function ApplicationDetailPage({
                   "—"
                 )}
               </Field>
+              {/*
+                Which account approval will attach to this family. Shown because
+                approving grants that account the guardian role and a child, and
+                the applicant chose the address it was matched on — so a human
+                confirms it rather than the match being invisible.
+              */}
+              <Field label="Parent account" className="sm:col-span-2">
+                {application.submitter ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {application.submitter.fullName || application.submitter.email}
+                    </span>
+                    <Badge
+                      tone={
+                        application.submitter.status === "active"
+                          ? "success"
+                          : "warning"
+                      }
+                    >
+                      {application.submitter.status}
+                    </Badge>
+                    {application.submitter.email !== application.guardian_email ? (
+                      <Badge tone="danger">
+                        differs from the email above
+                      </Badge>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="text-[var(--foreground-muted)]">
+                    None — this application was submitted before the form created
+                    accounts, so approving it will not link a login.
+                  </span>
+                )}
+              </Field>
             </dl>
           </CardContent>
         </Card>
