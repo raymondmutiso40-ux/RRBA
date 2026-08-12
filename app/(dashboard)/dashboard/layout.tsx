@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Logo } from "@/components/brand/logo";
 import { AccountPending } from "@/components/dashboard/account-pending";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { SignOutButton } from "@/components/dashboard/sign-out-button";
@@ -52,19 +53,8 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
       <aside className="flex shrink-0 flex-col border-b border-[var(--border-color)] bg-[var(--surface)] lg:h-dvh lg:w-64 lg:border-r lg:border-b-0">
-        <div className="flex items-center gap-2.5 border-b border-[var(--border-color)] px-5 py-4">
-          <span
-            className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--primary)] text-sm font-bold text-[var(--primary-foreground)]"
-            aria-hidden="true"
-          >
-            RR
-          </span>
-          <span className="text-sm font-semibold tracking-tight">
-            Runda Ridge
-            <span className="block text-xs font-normal text-[var(--foreground-muted)]">
-              Basketball Academy
-            </span>
-          </span>
+        <div className="border-b border-[var(--border-color)] px-5 py-4">
+          <Logo priority />
         </div>
 
         <div className="flex-1 overflow-y-auto">

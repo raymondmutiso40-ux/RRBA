@@ -14,7 +14,6 @@
 export const academy = {
   name: "Runda Ridge Basketball Academy",
   shortName: "Runda Ridge",
-  initials: "RR",
   location: "Runda, Nairobi",
   tagline: "Where Nairobi's next generation learns to compete",
   intro:

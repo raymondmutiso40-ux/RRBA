@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { Logo } from "@/components/brand/logo";
 import { academy } from "@/lib/content/site";
 
 import { ApplicationForm } from "./application-form";
@@ -15,19 +16,8 @@ export default function ApplyPage() {
     <>
       <header className="border-b border-[var(--border-color)]">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-            <span
-              className="grid size-9 place-items-center rounded-lg bg-[var(--primary)] text-sm font-bold text-[var(--primary-foreground)]"
-              aria-hidden="true"
-            >
-              {academy.initials}
-            </span>
-            <span className="text-sm">
-              {academy.shortName}
-              <span className="block text-xs font-normal text-[var(--foreground-muted)]">
-                Basketball Academy
-              </span>
-            </span>
+          <Link href="/">
+            <Logo priority />
           </Link>
           <Link
             href="/"

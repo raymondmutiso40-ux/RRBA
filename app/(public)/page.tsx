@@ -12,6 +12,7 @@ import {
   Trophy,
 } from "lucide-react";
 
+import { Logo } from "@/components/brand/logo";
 import { InstagramIcon } from "@/components/icons/instagram";
 import { Button } from "@/components/ui/button";
 import { academy, contact, instagram, pillars, programs, stats } from "@/lib/content/site";
@@ -63,19 +64,8 @@ function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border-color)] bg-[var(--background)]/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
-        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-          <span
-            className="grid size-9 place-items-center rounded-lg bg-[var(--primary)] text-sm font-bold text-[var(--primary-foreground)]"
-            aria-hidden="true"
-          >
-            {academy.initials}
-          </span>
-          <span className="text-sm">
-            {academy.shortName}
-            <span className="block text-xs font-normal text-[var(--foreground-muted)]">
-              Basketball Academy
-            </span>
-          </span>
+        <Link href="/">
+          <Logo priority />
         </Link>
 
         <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Logo, LogoMark } from "@/components/brand/logo";
 import { SetupRequired } from "@/components/setup-required";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -21,22 +22,8 @@ export default function AuthLayout({
         className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16"
       >
         <div className="mx-auto w-full max-w-sm">
-          <Link
-            href="/"
-            className="mb-10 inline-flex items-center gap-2.5 font-semibold tracking-tight"
-          >
-            <span
-              className="grid size-9 place-items-center rounded-lg bg-[var(--primary)] text-sm font-bold text-[var(--primary-foreground)]"
-              aria-hidden="true"
-            >
-              RR
-            </span>
-            <span>
-              Runda Ridge
-              <span className="block text-xs font-normal text-[var(--foreground-muted)]">
-                Basketball Academy
-              </span>
-            </span>
+          <Link href="/" className="mb-10 inline-flex">
+            <Logo priority />
           </Link>
 
           {children}
@@ -57,6 +44,9 @@ export default function AuthLayout({
           }}
         />
         <div className="relative flex h-full flex-col justify-end gap-3 p-16">
+          {/* The emblem keeps its outline against this panel — the black holds
+              the shape and the orange carries it. */}
+          <LogoMark size={112} className="mb-6" />
           <p className="text-3xl leading-tight font-semibold text-white">
             Develop players.
             <br />
