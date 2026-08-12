@@ -27,17 +27,25 @@ Runda Ridge Basketball Academy and to manage his player track his payment
    `SUPABASE_SERVICE_ROLE_KEY` is optional and server-only. Never expose it to
    the browser or commit it.
 
-3. Apply the database migrations in order, either with the Supabase CLI
-   (`supabase db push`) or by pasting each file into the SQL editor:
+3. Apply every file in `supabase/migrations/` in filename order — the names are
+   timestamp-prefixed, so lexical order is execution order, and later
+   migrations reference tables the earlier ones create.
 
+   With the Supabase CLI:
+
+   ```bash
+   supabase db push
    ```
-   supabase/migrations/20260807000100_identity_and_rbac.sql
-   supabase/migrations/20260807000200_academy_core.sql
-   supabase/migrations/20260807000300_activity_and_development.sql
-   supabase/migrations/20260807000400_finance_and_platform.sql
-   supabase/migrations/20260807000500_rls_policies.sql
-   supabase/migrations/20260807000600_privilege_guard_and_bootstrap.sql
+
+   Or, for the SQL editor, concatenate them into one script first:
+
+   ```bash
+   npm run db:bundle                    # fresh database — every migration
+   npm run db:bundle -- --since=NAME    # existing one — only what is missing
    ```
+
+   Migrations are not idempotent, so do not re-run the full bundle against a
+   database that already has part of the schema.
 
 4. Set `BOOTSTRAP_ADMIN_EMAIL` to the address you will sign up with, then
    sign up. The dashboard shows a **Claim admin access** card for that

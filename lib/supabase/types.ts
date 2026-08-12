@@ -208,6 +208,7 @@ export interface Database {
           min_age: number | null;
           max_age: number | null;
           is_active: boolean;
+          is_public: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -221,8 +222,33 @@ export interface Database {
           min_age?: number | null;
           max_age?: number | null;
           is_active?: boolean;
+          is_public?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["teams"]["Insert"]>;
+        Relationships: [];
+      };
+      coach_public_profiles: {
+        Row: {
+          coach_id: string;
+          display_name: string;
+          headline: string;
+          bio: string | null;
+          sort_order: number;
+          published_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          coach_id: string;
+          display_name: string;
+          headline?: string;
+          bio?: string | null;
+          sort_order?: number;
+          published_at?: string | null;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["coach_public_profiles"]["Insert"]
+        >;
         Relationships: [];
       };
       events: {

@@ -125,6 +125,18 @@ export function canViewAuditLog(roles: AppRole[]) {
 }
 
 /**
+ * Editing the public website — coach biographies and which squads are shown.
+ *
+ * Admin-only, matching coach_public_profiles_admin_all and the teams write
+ * policies. Coaches are excluded even for their own biography: this decides
+ * what the academy says about its staff on its own site, which is the
+ * academy's call rather than each coach's.
+ */
+export function canManageWebsite(roles: AppRole[]) {
+  return isAdmin(roles);
+}
+
+/**
  * Player record permissions, mirroring the RLS policies exactly.
  *
  * Creating a player is admin-only: the `players_admin_all` policy is the only

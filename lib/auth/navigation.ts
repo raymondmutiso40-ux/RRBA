@@ -125,6 +125,11 @@ const NAV_SECTIONS: NavSection[] = [
         roles: ["super_admin", "academy_admin", "coach", "finance"],
       },
       {
+        label: "Public website",
+        href: "/dashboard/website",
+        roles: ["super_admin", "academy_admin"],
+      },
+      {
         label: "Audit log",
         href: "/dashboard/audit",
         roles: ["super_admin", "academy_admin"],

@@ -173,6 +173,30 @@ export const teamSchema = z.object({
     { message: "Maximum age must not be below minimum age", path: ["maxAge"] },
   );
 
+/**
+ * A coach's publishable biography.
+ *
+ * Mirrors the coach_public_display_name_len, coach_public_headline_len and
+ * coach_public_bio_len CHECK constraints. This text is rendered to anonymous
+ * visitors, so the bounds are the layout's as much as the database's.
+ *
+ * Publication state is deliberately absent: putting a profile on the internet
+ * is its own action, not a field on the edit form.
+ */
+export const coachPublicProfileSchema = z.object({
+  // coach_public_profiles
+  displayName: z.string().trim().min(2, "At least 2 characters").max(80),
+  headline: z.string().trim().max(120).optional().or(z.literal("")),
+  bio: z.string().trim().max(1200).optional().or(z.literal("")),
+  sortOrder: z.number().int().min(0).max(999).optional().nullable(),
+});
+
+/** Showing or hiding a squad on the public site. */
+export const squadVisibilitySchema = z.object({
+  teamId: z.string().uuid(),
+  isPublic: z.boolean(),
+});
+
 /** Adding a player to a team's roster. */
 export const rosterAddSchema = z.object({
   teamId: z.string().uuid(),

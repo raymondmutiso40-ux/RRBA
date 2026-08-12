@@ -35,8 +35,14 @@ export type CoachListParams = {
   includeInactive?: boolean;
 };
 
-/** Profile ids holding the coach role. */
-async function coachIds(
+/**
+ * Profile ids holding the coach role.
+ *
+ * Exported because "who is a coach" has exactly one answer and more than one
+ * caller — the website admin area asks the same question to decide whose
+ * public profile it can offer to edit.
+ */
+export async function coachIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<string[]> {
   const { data } = await supabase

@@ -12,8 +12,9 @@ import {
   Trophy,
 } from "lucide-react";
 
-import { Logo } from "@/components/brand/logo";
 import { InstagramIcon } from "@/components/icons/instagram";
+import { SiteFooter } from "@/components/public/site-footer";
+import { SiteHeader } from "@/components/public/site-header";
 import { Button } from "@/components/ui/button";
 import { academy, contact, instagram, pillars, programs, stats } from "@/lib/content/site";
 
@@ -31,9 +32,9 @@ export const metadata: Metadata = {
  * Public landing page — the academy's advertisement.
  *
  * Copy and figures live in lib/content/site.ts so the coach can edit them
- * without touching layout. Sections are static by design; when the gallery and
- * achievements tables have real rows behind them, the showcase section can read
- * from the database instead.
+ * without touching layout. The sections here stay static — they describe what
+ * the academy offers, which does not change term to term. What does change is
+ * on /teams and /coaches, which read the database.
  */
 
 const pillarIcons = {
@@ -57,43 +58,6 @@ export default function HomePage() {
       </main>
       <SiteFooter />
     </>
-  );
-}
-
-function SiteHeader() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border-color)] bg-[var(--background)]/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
-        <Link href="/">
-          <Logo priority />
-        </Link>
-
-        <nav aria-label="Primary" className="flex items-center gap-1 sm:gap-2">
-          <Link
-            href="#programs"
-            className="hidden rounded-lg px-3 py-2 text-sm text-[var(--foreground-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] sm:block"
-          >
-            Programmes
-          </Link>
-          <a
-            href={instagram.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden rounded-lg px-3 py-2 text-sm text-[var(--foreground-muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] sm:block"
-          >
-            Gallery
-          </a>
-          <Link href="/login">
-            <Button variant="ghost" size="sm">
-              Sign in
-            </Button>
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Register</Button>
-          </Link>
-        </nav>
-      </div>
-    </header>
   );
 }
 
@@ -270,6 +234,26 @@ function Programs() {
             </article>
           ))}
         </div>
+
+        {/*
+          Programmes are the standing offer; the squads and staff pages are the
+          current reality, read from the database. Linking out here is what
+          connects the two.
+        */}
+        <div className="mt-10 flex flex-wrap gap-3">
+          <Link href="/teams">
+            <Button variant="outline">
+              See this season&apos;s squads
+              <ArrowRight aria-hidden="true" />
+            </Button>
+          </Link>
+          <Link href="/coaches">
+            <Button variant="outline">
+              Meet the coaches
+              <ArrowRight aria-hidden="true" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </section>
   );
@@ -429,35 +413,3 @@ function CallToAction() {
   );
 }
 
-function SiteFooter() {
-  return (
-    <footer className="border-t border-[var(--border-color)]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium">{academy.name}</p>
-          <p className="mt-1 text-sm text-[var(--foreground-muted)]">
-            © {new Date().getFullYear()} · {academy.location}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <a
-            href={instagram.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] transition-colors hover:text-[var(--primary)]"
-          >
-            <InstagramIcon className="size-4" />
-            {instagram.handle}
-          </a>
-          <Link
-            href="/login"
-            className="text-sm text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)]"
-          >
-            Member sign in
-          </Link>
-        </div>
-      </div>
-    </footer>
-  );
-}
