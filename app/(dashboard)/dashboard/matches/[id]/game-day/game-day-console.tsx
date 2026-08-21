@@ -314,8 +314,18 @@ export function GameDayConsole({
       <Card className="p-3">
         <div className="flex items-center justify-between"><div><h3 className="font-semibold">Substitutions</h3><p className="text-xs text-[var(--foreground-muted)]">Only 5 players are active. Stats remain with players when they leave the court.</p></div><ArrowLeftRight className="size-5 text-[var(--foreground-muted)]" /></div>
         <div className="mt-3 grid gap-4 lg:grid-cols-2">
-          <SubstitutionPanel title={`${teamName} bench`} bench={homeBench.map((e) => ({ id: e.player_id, label: displayName(e) }))} onCourt={onCourt} onSub={(outId, inId) => substitute("home", outId, inId)} />
-          <SubstitutionPanel title={`${opponentName} bench`} bench={opponentBench.map((p) => ({ id: p.key, label: `#${p.jersey} ${p.name}` }))} onCourt={activeOpponent} onSub={(outId, inId) => substitute("opponent", outId, inId)} />
+          <RosterSwapPanel
+            title={`${teamName} lineup`}
+            onCourt={onCourt.map((id) => { const entry = initialEntries.find((e) => e.player_id === id); return { id, label: entry ? displayName(entry) : id }; })}
+            bench={homeBench.map((e) => ({ id: e.player_id, label: displayName(e) }))}
+            onSub={(outId, inId) => substitute("home", outId, inId)}
+          />
+          <RosterSwapPanel
+            title={`${opponentName} lineup`}
+            onCourt={activeOpponent.map((key) => { const player = opponent.find((p) => p.key === key); return { id: key, label: player ? `#${player.jersey} ${player.name}` : key }; })}
+            bench={opponentBench.map((p) => ({ id: p.key, label: `#${p.jersey} ${p.name}` }))}
+            onSub={(outId, inId) => substitute("opponent", outId, inId)}
+          />
         </div>
       </Card>
 
@@ -347,9 +357,71 @@ export function GameDayConsole({
   );
 }
 
-function SubstitutionPanel({ title, bench, onCourt, onSub }: { title: string; bench: { id: string; label: string }[]; onCourt: string[]; onSub: (outId: string, inId: string) => void }) {
-  const [outId, setOutId] = useState(onCourt[0] ?? "");
-  return <div className="rounded-xl border border-[var(--border-color)] p-3"><div className="mb-2 text-sm font-semibold">{title}</div><select value={outId} onChange={(e) => setOutId(e.target.value)} className="w-full rounded-lg border border-[var(--border-color)] bg-transparent px-3 py-2 text-sm"><option value="">Select player leaving</option>{onCourt.map((id) => <option key={id} value={id}>{id}</option>)}</select><div className="mt-2 grid grid-cols-2 gap-2">{bench.map((player) => <button key={player.id} type="button" disabled={!outId} onClick={() => { onSub(outId, player.id); setOutId(player.id); }} className="rounded-lg border border-[var(--border-color)] px-3 py-2 text-left text-xs font-semibold disabled:opacity-40 hover:bg-[var(--surface-muted)]"><ArrowLeftRight className="mr-1 inline size-3" /> {player.label}</button>)}</div></div>;
+function RosterSwapPanel({
+  title,
+  onCourt,
+  bench,
+  onSub,
+}: {
+  title: string;
+  onCourt: { id: string; label: string }[];
+  bench: { id: string; label: string }[];
+  onSub: (outId: string, inId: string) => void;
+}) {
+  const [pendingOut, setPendingOut] = useState<string | null>(null);
+  const [pendingIn, setPendingIn] = useState<string | null>(null);
+
+  function pickOut(id: string) {
+    if (pendingOut === id) { setPendingOut(null); return; }
+    if (pendingIn) { onSub(id, pendingIn); setPendingOut(null); setPendingIn(null); return; }
+    setPendingOut(id);
+  }
+
+  function pickIn(id: string) {
+    if (pendingIn === id) { setPendingIn(null); return; }
+    if (pendingOut) { onSub(pendingOut, id); setPendingOut(null); setPendingIn(null); return; }
+    setPendingIn(id);
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--border-color)] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-sm font-semibold">{title}</div>
+        {pendingOut || pendingIn ? (
+          <button type="button" onClick={() => { setPendingOut(null); setPendingIn(null); }} className="text-[11px] text-[var(--foreground-muted)] underline">
+            Clear
+          </button>
+        ) : null}
+      </div>
+      <p className="mb-2 text-[11px] text-[var(--foreground-muted)]">Tap a player on court, then tap a bench player (either order) to swap them.</p>
+      <div className="mb-1 text-[10px] font-semibold tracking-wide text-[var(--foreground-muted)] uppercase">On court</div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {onCourt.map((player) => (
+          <button
+            key={player.id}
+            type="button"
+            onClick={() => pickOut(player.id)}
+            className={`truncate rounded-lg border px-3 py-2 text-left text-xs font-semibold ${pendingOut === player.id ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border-color)] hover:bg-[var(--surface-muted)]"}`}
+          >
+            {player.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 mb-1 text-[10px] font-semibold tracking-wide text-[var(--foreground-muted)] uppercase">Bench</div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {bench.length ? bench.map((player) => (
+          <button
+            key={player.id}
+            type="button"
+            onClick={() => pickIn(player.id)}
+            className={`truncate rounded-lg border px-3 py-2 text-left text-xs font-semibold ${pendingIn === player.id ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border-color)] hover:bg-[var(--surface-muted)]"}`}
+          >
+            <ArrowLeftRight className="mr-1 inline size-3" /> {player.label}
+          </button>
+        )) : <div className="col-span-full text-xs text-[var(--foreground-muted)]">Everyone is on court.</div>}
+      </div>
+    </div>
+  );
 }
 
 function BoxTable({ title, entries, total }: { title: string; entries: { name: string; stats: StatLine }[]; total: StatLine }) {
