@@ -347,6 +347,8 @@ export interface Database {
           minutes_played: number | null;
           points: number | null;
           rebounds: number | null;
+          offensive_rebounds: number | null;
+          defensive_rebounds: number | null;
           assists: number | null;
           steals: number | null;
           blocks: number | null;
@@ -370,6 +372,8 @@ export interface Database {
           minutes_played?: number | null;
           points?: number | null;
           rebounds?: number | null;
+          offensive_rebounds?: number | null;
+          defensive_rebounds?: number | null;
           assists?: number | null;
           steals?: number | null;
           blocks?: number | null;
@@ -397,6 +401,8 @@ export interface Database {
           minutes_played: number | null;
           points: number | null;
           rebounds: number | null;
+          offensive_rebounds: number | null;
+          defensive_rebounds: number | null;
           assists: number | null;
           steals: number | null;
           blocks: number | null;
@@ -419,6 +425,8 @@ export interface Database {
           minutes_played?: number | null;
           points?: number | null;
           rebounds?: number | null;
+          offensive_rebounds?: number | null;
+          defensive_rebounds?: number | null;
           assists?: number | null;
           steals?: number | null;
           blocks?: number | null;
