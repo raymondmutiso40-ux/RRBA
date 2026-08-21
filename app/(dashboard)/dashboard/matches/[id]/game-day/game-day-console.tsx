@@ -9,7 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { recordMatchResultAction, saveBoxScoreAction, saveOpponentBoxScoreAction } from "@/lib/matches/actions";
 import { emptyMatchActionState, type MatchActionState } from "@/lib/matches/action-state";
-import { STAT_COLUMNS, statFieldName, type StatKey } from "@/lib/matches/labels";
+import {
+  STAT_COLUMNS,
+  efficiencyRating,
+  estimatedPossessions,
+  formatDuration,
+  formatPercentage,
+  statFieldName,
+  trueShootingPercentage,
+  usageRate,
+  type StatKey,
+} from "@/lib/matches/labels";
 import type { BoxScoreEntry, OpponentBoxScoreEntry } from "@/lib/matches/queries";
 
 const STORAGE_PREFIX = "rrba:gameday:v2:";
@@ -20,6 +30,7 @@ const DEFAULT_OPPONENT_ROSTER = 12;
 type StatLine = Record<StatKey, number>;
 type GameState = Record<string, StatLine>;
 type OpponentPlayer = { key: string; name: string; jersey: number; stats: StatLine };
+type SecondsMap = Record<string, number>;
 type HistoryEntry = {
   game: GameState;
   opponent: OpponentPlayer[];
@@ -28,6 +39,10 @@ type HistoryEntry = {
   opponentOnCourt: string[];
   teamScore: number;
   opponentScore: number;
+  homeSeconds: SecondsMap;
+  opponentSeconds: SecondsMap;
+  homePlusMinus: SecondsMap;
+  opponentPlusMinus: SecondsMap;
 };
 
 type Props = {
@@ -42,9 +57,9 @@ type Props = {
 
 function blankLine(): StatLine {
   return {
-    minutes_played: 0, points: 0, rebounds: 0, assists: 0, steals: 0, blocks: 0,
-    turnovers: 0, fouls: 0, fg_made: 0, fg_attempts: 0, three_made: 0,
-    three_attempts: 0, ft_made: 0, ft_attempts: 0,
+    minutes_played: 0, points: 0, rebounds: 0, offensive_rebounds: 0, defensive_rebounds: 0,
+    assists: 0, steals: 0, blocks: 0, turnovers: 0, fouls: 0, fg_made: 0, fg_attempts: 0,
+    three_made: 0, three_attempts: 0, ft_made: 0, ft_attempts: 0,
   };
 }
 
@@ -107,6 +122,15 @@ export function GameDayConsole({
   const [opponentScore, setOpponentScore] = useState(initialOpponentScore);
   const [game, setGame] = useState<GameState>(() => Object.fromEntries(initialEntries.map((entry) => [entry.player_id, fromEntry(entry)])));
   const [opponent, setOpponent] = useState<OpponentPlayer[]>(() => opponentDefaults(initialOpponentEntries));
+  // Clock-synced playing time, tracked in seconds so it can display MM:SS
+  // live; only rounded to whole minutes at the point of saving, since
+  // minutes_played is a smallint column. Seeded from whatever was already
+  // saved, so resuming a game keeps prior minutes rather than restarting
+  // everyone at 0:00.
+  const [homeSeconds, setHomeSeconds] = useState<SecondsMap>(() => Object.fromEntries(initialEntries.map((entry) => [entry.player_id, (entry.stats?.minutes_played ?? 0) * 60])));
+  const [opponentSeconds, setOpponentSeconds] = useState<SecondsMap>(() => Object.fromEntries(initialOpponentEntries.map((entry) => [entry.player_key, (entry.minutes_played ?? 0) * 60])));
+  const [homePlusMinus, setHomePlusMinus] = useState<SecondsMap>({});
+  const [opponentPlusMinus, setOpponentPlusMinus] = useState<SecondsMap>({});
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [recordedPlayers, setRecordedPlayers] = useState<Record<string, boolean>>(() => Object.fromEntries(initialEntries.map((entry) => [entry.player_id, entry.stats !== null])));
   const [hydrated, setHydrated] = useState(false);
@@ -123,6 +147,7 @@ export function GameDayConsole({
         const saved = JSON.parse(raw) as Partial<{
           game: GameState; opponent: OpponentPlayer[]; recordedPlayers: Record<string, boolean>;
           onCourt: string[]; opponentOnCourt: string[]; teamScore: number; opponentScore: number; quarter: number; clock: number;
+          homeSeconds: SecondsMap; opponentSeconds: SecondsMap; homePlusMinus: SecondsMap; opponentPlusMinus: SecondsMap;
         }>;
         if (saved.game) setGame(saved.game);
         if (saved.opponent) setOpponent(saved.opponent);
@@ -133,6 +158,10 @@ export function GameDayConsole({
         if (typeof saved.opponentScore === "number") setOpponentScore(saved.opponentScore);
         if (saved.quarter && [1, 2, 3, 4].includes(saved.quarter)) setQuarter(saved.quarter as 1 | 2 | 3 | 4);
         if (typeof saved.clock === "number" && saved.clock >= 0 && saved.clock <= CLOCK_SECONDS) setClock(saved.clock);
+        if (saved.homeSeconds) setHomeSeconds(saved.homeSeconds);
+        if (saved.opponentSeconds) setOpponentSeconds(saved.opponentSeconds);
+        if (saved.homePlusMinus) setHomePlusMinus(saved.homePlusMinus);
+        if (saved.opponentPlusMinus) setOpponentPlusMinus(saved.opponentPlusMinus);
       }
     } catch { /* Ignore corrupt local draft. */ }
     setHydrated(true);
@@ -140,17 +169,33 @@ export function GameDayConsole({
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem(storageKey, JSON.stringify({ game, opponent, recordedPlayers, onCourt, opponentOnCourt, teamScore, opponentScore, quarter, clock }));
-  }, [clock, game, hydrated, opponent, opponentOnCourt, opponentScore, onCourt, quarter, recordedPlayers, storageKey, teamScore]);
+    window.localStorage.setItem(storageKey, JSON.stringify({ game, opponent, recordedPlayers, onCourt, opponentOnCourt, teamScore, opponentScore, quarter, clock, homeSeconds, opponentSeconds, homePlusMinus, opponentPlusMinus }));
+  }, [clock, game, homePlusMinus, homeSeconds, hydrated, opponent, opponentOnCourt, opponentPlusMinus, opponentScore, opponentSeconds, onCourt, quarter, recordedPlayers, storageKey, teamScore]);
 
+  // The game clock and each on-court player's TIM tick together: one
+  // interval, one source of truth. Pausing the clock pauses minutes for
+  // everyone on court, same as a real scorer's table — nobody accrues
+  // playing time while the clock isn't running.
   useEffect(() => {
     if (!clockRunning) return;
-    const timer = window.setInterval(() => setClock((current) => {
-      if (current <= 1) { setClockRunning(false); return 0; }
-      return current - 1;
-    }), 1000);
+    const timer = window.setInterval(() => {
+      setClock((current) => {
+        if (current <= 1) { setClockRunning(false); return 0; }
+        return current - 1;
+      });
+      setHomeSeconds((current) => {
+        const next = { ...current };
+        for (const id of onCourt) next[id] = (next[id] ?? 0) + 1;
+        return next;
+      });
+      setOpponentSeconds((current) => {
+        const next = { ...current };
+        for (const key of opponentOnCourt) next[key] = (next[key] ?? 0) + 1;
+        return next;
+      });
+    }, 1000);
     return () => window.clearInterval(timer);
-  }, [clockRunning]);
+  }, [clockRunning, onCourt, opponentOnCourt]);
 
   const selected = initialEntries.find((entry) => entry.player_id === selectedId);
   const selectedStats = selected ? game[selected.player_id] ?? blankLine() : blankLine();
@@ -161,20 +206,58 @@ export function GameDayConsole({
     if (!opponentOnCourt.length) setOpponentOnCourt(opponent.slice(0, 5).map((p) => p.key));
   }, [opponent, opponentOnCourt.length]);
 
+  // Live views of each stat line with minutes_played swapped out for the
+  // clock-synced seconds counter (rather than whatever was last saved), so
+  // the box table, totals, and downloads reflect actual playing time as the
+  // game happens. Only rounded to whole minutes at save time.
+  const gameLive = useMemo(() => {
+    const merged: GameState = {};
+    for (const entry of initialEntries) {
+      merged[entry.player_id] = { ...(game[entry.player_id] ?? blankLine()), minutes_played: homeSeconds[entry.player_id] ?? 0 };
+    }
+    return merged;
+  }, [game, homeSeconds, initialEntries]);
+
+  const opponentLive = useMemo(
+    () => opponent.map((player) => ({ ...player, stats: { ...player.stats, minutes_played: opponentSeconds[player.key] ?? 0 } })),
+    [opponent, opponentSeconds],
+  );
+
   const totals = useMemo(() => {
     const total = blankLine();
-    for (const line of Object.values(game)) for (const key of STAT_COLUMNS.map((column) => column.key)) total[key] += line[key] ?? 0;
+    for (const line of Object.values(gameLive)) for (const key of STAT_COLUMNS.map((column) => column.key)) total[key] += line[key] ?? 0;
     return total;
-  }, [game]);
+  }, [gameLive]);
 
   const opponentTotals = useMemo(() => {
     const total = blankLine();
-    for (const player of opponent) for (const key of STAT_COLUMNS.map((column) => column.key)) total[key] += player.stats[key] ?? 0;
+    for (const player of opponentLive) for (const key of STAT_COLUMNS.map((column) => column.key)) total[key] += player.stats[key] ?? 0;
     return total;
-  }, [opponent]);
+  }, [opponentLive]);
 
   function pushHistory() {
-    setHistory((current) => [...current.slice(-30), { game, opponent, recordedPlayers, onCourt, opponentOnCourt, teamScore, opponentScore }]);
+    setHistory((current) => [...current.slice(-30), { game, opponent, recordedPlayers, onCourt, opponentOnCourt, teamScore, opponentScore, homeSeconds, opponentSeconds, homePlusMinus, opponentPlusMinus }]);
+  }
+
+  /**
+   * Plus/minus for everyone on court when a basket is scored — the scoring
+   * side's on-court players gain the points, the other side's on-court
+   * players lose them. Applies to points scored by name (via updateHome /
+   * updateOpponent) and to the header's unattributed opponent-point buttons
+   * alike, since both change who's ahead on the floor right now.
+   */
+  function applyPlusMinus(scoringSide: "home" | "opponent", delta: number) {
+    if (!delta) return;
+    setHomePlusMinus((current) => {
+      const next = { ...current };
+      for (const id of onCourt) next[id] = (next[id] ?? 0) + (scoringSide === "home" ? delta : -delta);
+      return next;
+    });
+    setOpponentPlusMinus((current) => {
+      const next = { ...current };
+      for (const key of opponentOnCourt) next[key] = (next[key] ?? 0) + (scoringSide === "opponent" ? delta : -delta);
+      return next;
+    });
   }
 
   function updateHome(mutator: (line: StatLine) => StatLine, scoreDelta = 0) {
@@ -182,14 +265,25 @@ export function GameDayConsole({
     pushHistory();
     setGame((current) => ({ ...current, [selected.player_id]: mutator({ ...(current[selected.player_id] ?? blankLine()) }) }));
     setRecordedPlayers((current) => ({ ...current, [selected.player_id]: true }));
-    if (scoreDelta) setTeamScore((score) => Math.max(0, score + scoreDelta));
+    if (scoreDelta) { setTeamScore((score) => Math.max(0, score + scoreDelta)); applyPlusMinus("home", scoreDelta); }
   }
 
   function updateOpponent(mutator: (line: StatLine) => StatLine, scoreDelta = 0) {
     if (!selectedOpponent) return;
     pushHistory();
     setOpponent((current) => current.map((player) => player.key === selectedOpponent.key ? { ...player, stats: mutator({ ...player.stats }) } : player));
-    if (scoreDelta) setOpponentScore((score) => Math.max(0, score + scoreDelta));
+    if (scoreDelta) { setOpponentScore((score) => Math.max(0, score + scoreDelta)); applyPlusMinus("opponent", scoreDelta); }
+  }
+
+  /** Minutes are rounded from the seconds counter only at the save boundary — everything else stays second-precise. */
+  function saveHomeValue(playerId: string, key: StatKey) {
+    if (key === "minutes_played") return Math.round((homeSeconds[playerId] ?? 0) / 60);
+    return game[playerId]?.[key] ?? 0;
+  }
+
+  function saveOpponentValue(player: OpponentPlayer, key: StatKey) {
+    if (key === "minutes_played") return Math.round((opponentSeconds[player.key] ?? 0) / 60);
+    return player.stats[key] ?? 0;
   }
 
   function actionFor(label: string) {
@@ -200,7 +294,12 @@ export function GameDayConsole({
     if (label === "MISS 3") return fn((l) => ({ ...l, fg_attempts: l.fg_attempts + 1, three_attempts: l.three_attempts + 1 }));
     if (label === "MISS 2") return fn((l) => ({ ...l, fg_attempts: l.fg_attempts + 1 }));
     if (label === "MISS FT") return fn((l) => ({ ...l, ft_attempts: l.ft_attempts + 1 }));
-    const statMap: Record<string, Exclude<StatKey, "minutes_played" | "points" | "fg_made" | "fg_attempts" | "three_made" | "three_attempts" | "ft_made" | "ft_attempts">> = { ORB: "rebounds", DRB: "rebounds", AST: "assists", BLK: "blocks", STL: "steals", TO: "turnovers", FOUL: "fouls" };
+    // ORB/DRB bump their own split column and the rebounds total together, so
+    // old readers of `rebounds` (season averages, the player profile) keep
+    // working unchanged while new readers get the split too.
+    if (label === "ORB") return fn((l) => ({ ...l, rebounds: l.rebounds + 1, offensive_rebounds: l.offensive_rebounds + 1 }));
+    if (label === "DRB") return fn((l) => ({ ...l, rebounds: l.rebounds + 1, defensive_rebounds: l.defensive_rebounds + 1 }));
+    const statMap: Record<string, Exclude<StatKey, "minutes_played" | "points" | "rebounds" | "offensive_rebounds" | "defensive_rebounds" | "fg_made" | "fg_attempts" | "three_made" | "three_attempts" | "ft_made" | "ft_attempts">> = { AST: "assists", BLK: "blocks", STL: "steals", TO: "turnovers", FOUL: "fouls" };
     const key = statMap[label];
     return key ? fn((l) => ({ ...l, [key]: l[key] + 1 })) : undefined;
   }
@@ -218,6 +317,8 @@ export function GameDayConsole({
     setGame(previous.game); setOpponent(previous.opponent); setRecordedPlayers(previous.recordedPlayers);
     setOnCourt(previous.onCourt); setOpponentOnCourt(previous.opponentOnCourt);
     setTeamScore(previous.teamScore); setOpponentScore(previous.opponentScore);
+    setHomeSeconds(previous.homeSeconds); setOpponentSeconds(previous.opponentSeconds);
+    setHomePlusMinus(previous.homePlusMinus); setOpponentPlusMinus(previous.opponentPlusMinus);
     setHistory((current) => current.slice(0, -1));
   }
 
@@ -226,7 +327,10 @@ export function GameDayConsole({
     setGame(Object.fromEntries(initialEntries.map((entry) => [entry.player_id, blankLine()])));
     setOpponent(opponentDefaults([])); setTeamScore(0); setOpponentScore(0); setQuarter(1); setClock(CLOCK_SECONDS); setClockRunning(false);
     setHistory([]); setOnCourt(initialStarting); setOpponentOnCourt(opponent.slice(0, 5).map((p) => p.key));
-    setRecordedPlayers(Object.fromEntries(initialEntries.map((entry) => [entry.player_id, false]))); window.localStorage.removeItem(storageKey);
+    setRecordedPlayers(Object.fromEntries(initialEntries.map((entry) => [entry.player_id, false])));
+    setHomeSeconds(Object.fromEntries(initialEntries.map((entry) => [entry.player_id, 0])));
+    setOpponentSeconds({}); setHomePlusMinus({}); setOpponentPlusMinus({});
+    window.localStorage.removeItem(storageKey);
   }
 
   function downloadJpeg() {
@@ -257,8 +361,8 @@ export function GameDayConsole({
       }
       y += 25;
     };
-    drawSection(teamName, initialEntries.map((e) => ({ name: displayName(e), stats: game[e.player_id] ?? blankLine() })));
-    drawSection(opponentName, opponent.map((p) => ({ name: `#${p.jersey} ${p.name}`, stats: p.stats })));
+    drawSection(teamName, initialEntries.map((e) => ({ name: displayName(e), stats: gameLive[e.player_id] ?? blankLine() })));
+    drawSection(opponentName, opponentLive.map((p) => ({ name: `#${p.jersey} ${p.name}`, stats: p.stats })));
     ctx.fillStyle = "#6b7280"; ctx.font = "18px Arial"; ctx.fillText("Generated by RRBA", 70, canvas.height - 35);
     const link = document.createElement("a"); link.download = `RRBA-${teamName.replace(/[^a-z0-9]+/gi, "-")}-vs-${opponentName.replace(/[^a-z0-9]+/gi, "-")}-stats.jpg`; link.href = canvas.toDataURL("image/jpeg", 0.94); link.click();
   }
@@ -278,8 +382,8 @@ export function GameDayConsole({
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 border-t border-white/10 px-4 py-2">
           <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10" onClick={() => setQuarter((q) => q === 4 ? 1 : (q + 1) as 1 | 2 | 3 | 4)}>Next quarter <ChevronRight className="ml-1 inline size-3" /></button>
-          <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10" onClick={() => setOpponentScore((score) => Math.max(0, score - 1))}>− opponent point</button>
-          <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10" onClick={() => setOpponentScore((score) => score + 1)}>+ opponent point</button>
+          <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10" onClick={() => { pushHistory(); setOpponentScore((score) => Math.max(0, score - 1)); applyPlusMinus("opponent", -1); }}>− opponent point</button>
+          <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10" onClick={() => { pushHistory(); setOpponentScore((score) => score + 1); applyPlusMinus("opponent", 1); }}>+ opponent point</button>
           <button type="button" className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/15" onClick={downloadJpeg}><Download className="mr-1 inline size-3" /> Download JPEG</button>
         </div>
       </Card>
@@ -296,15 +400,16 @@ export function GameDayConsole({
               const id = selectedSide === "home" ? (player as BoxScoreEntry).player_id : (player as OpponentPlayer).key;
               const label = selectedSide === "home" ? displayName(player as BoxScoreEntry) : `#${(player as OpponentPlayer).jersey} ${(player as OpponentPlayer).name}`;
               const points = selectedSide === "home" ? game[id]?.points ?? 0 : (player as OpponentPlayer).stats.points;
+              const seconds = selectedSide === "home" ? homeSeconds[id] ?? 0 : opponentSeconds[id] ?? 0;
               const active = selectedSide === "home" ? selectedId === id : selectedOpponentKey === id;
-              return <button key={id} type="button" onClick={() => selectedSide === "home" ? setSelectedId(id) : setSelectedOpponentKey(id)} className={`min-h-20 rounded-xl border px-2 text-left ${active ? "border-[var(--primary)] bg-[var(--surface-muted)]" : "border-[var(--border-color)]"}`}><div className="truncate text-xs font-semibold">{label}</div><div className="mt-2 text-2xl font-bold tabular-nums">{points}</div><div className="text-[10px] text-[var(--foreground-muted)]">PTS</div></button>;
+              return <button key={id} type="button" onClick={() => selectedSide === "home" ? setSelectedId(id) : setSelectedOpponentKey(id)} className={`min-h-20 rounded-xl border px-2 text-left ${active ? "border-[var(--primary)] bg-[var(--surface-muted)]" : "border-[var(--border-color)]"}`}><div className="truncate text-xs font-semibold">{label}</div><div className="mt-2 text-2xl font-bold tabular-nums">{points}</div><div className="flex items-center justify-between text-[10px] text-[var(--foreground-muted)]"><span>PTS</span><span className="tabular-nums">{formatDuration(seconds)}</span></div></button>;
             })}
           </div>
         </div>
       </Card>
 
       <Card className="p-3 sm:p-5">
-        <div className="mb-4 flex items-center justify-between"><div><div className="text-xs font-medium tracking-wide text-[var(--foreground-muted)] uppercase">Recording</div><h2 className="text-xl font-semibold">{selectedSide === "home" ? (selected ? displayName(selected) : "Select a player") : (selectedOpponent ? `#${selectedOpponent.jersey} ${selectedOpponent.name}` : "Select opponent")}</h2></div><div className="text-right"><div className="text-3xl font-semibold tabular-nums">{selectedSide === "home" ? selectedStats.points : selectedOpponent?.stats.points ?? 0}</div><div className="text-xs text-[var(--foreground-muted)]">PTS</div></div></div>
+        <div className="mb-4 flex items-center justify-between"><div><div className="text-xs font-medium tracking-wide text-[var(--foreground-muted)] uppercase">Recording</div><h2 className="text-xl font-semibold">{selectedSide === "home" ? (selected ? displayName(selected) : "Select a player") : (selectedOpponent ? `#${selectedOpponent.jersey} ${selectedOpponent.name}` : "Select opponent")}</h2><p className="mt-0.5 text-xs text-[var(--foreground-muted)]">TIM {formatDuration(selectedSide === "home" ? homeSeconds[selectedId] ?? 0 : opponentSeconds[selectedOpponentKey] ?? 0)} {clockRunning ? "· live" : ""}</p></div><div className="text-right"><div className="text-3xl font-semibold tabular-nums">{selectedSide === "home" ? selectedStats.points : selectedOpponent?.stats.points ?? 0}</div><div className="text-xs text-[var(--foreground-muted)]">PTS</div></div></div>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {["+3", "+2", "+FT", "MISS 3", "MISS 2", "MISS FT", "ORB", "DRB", "AST", "BLK", "STL", "TO", "FOUL"].map((label) => <ActionButton key={label} label={label} tone={label.startsWith("MISS") ? "danger" : label.startsWith("+") ? "primary" : "info"} onClick={() => actionFor(label)} />)}
           <button type="button" onClick={undo} disabled={!history.length} className="flex min-h-20 items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-muted)] text-sm font-semibold disabled:opacity-40"><Undo2 className="size-5" /> Undo</button>
@@ -341,8 +446,8 @@ export function GameDayConsole({
       {resultState.message ? <Alert tone={resultState.ok ? "success" : "danger"}>{resultState.message}</Alert> : null}
 
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr]">
-        <Card className="p-4"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Save RRBA stats</h3><p className="text-sm text-[var(--foreground-muted)]">Save every RRBA player whose stats have been touched.</p></div><Save className="size-5" /></div><form action={saveAction} className="mt-4"><input type="hidden" name="eventId" value={eventId} />{initialEntries.filter((entry) => recordedPlayers[entry.player_id]).map((entry) => <div key={entry.player_id}><input type="hidden" name="playerId" value={entry.player_id} />{STAT_COLUMNS.map((column) => <input key={column.key} type="hidden" name={statFieldName(entry.player_id, column.key)} value={game[entry.player_id]?.[column.key] ?? 0} />)}</div>)}<Button type="submit" loading={savePending} className="w-full">Save RRBA stats</Button></form></Card>
-        <Card className="p-4"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Save opponent stats</h3><p className="text-sm text-[var(--foreground-muted)]">Opponent player names, roster and box scores are stored with this match.</p></div><Save className="size-5" /></div><form action={opponentSaveAction} className="mt-4"><input type="hidden" name="eventId" value={eventId} />{opponentFormPlayers.map((player) => <div key={player.key}><input type="hidden" name="opponentPlayerKey" value={player.key} /><input type="hidden" name={`opponentName_${player.key}`} value={player.name} /><input type="hidden" name={`opponentJersey_${player.key}`} value={player.jersey} />{STAT_COLUMNS.map((column) => <input key={column.key} type="hidden" name={`opponent_${player.key}_${column.key}`} value={player.stats[column.key] ?? 0} />)}</div>)}<Button type="submit" loading={opponentSavePending} className="w-full">Save opponent stats</Button></form></Card>
+        <Card className="p-4"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Save RRBA stats</h3><p className="text-sm text-[var(--foreground-muted)]">Save every RRBA player whose stats have been touched.</p></div><Save className="size-5" /></div><form action={saveAction} className="mt-4"><input type="hidden" name="eventId" value={eventId} />{initialEntries.filter((entry) => recordedPlayers[entry.player_id]).map((entry) => <div key={entry.player_id}><input type="hidden" name="playerId" value={entry.player_id} />{STAT_COLUMNS.map((column) => <input key={column.key} type="hidden" name={statFieldName(entry.player_id, column.key)} value={saveHomeValue(entry.player_id, column.key)} />)}</div>)}<Button type="submit" loading={savePending} className="w-full">Save RRBA stats</Button></form></Card>
+        <Card className="p-4"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Save opponent stats</h3><p className="text-sm text-[var(--foreground-muted)]">Opponent player names, roster and box scores are stored with this match.</p></div><Save className="size-5" /></div><form action={opponentSaveAction} className="mt-4"><input type="hidden" name="eventId" value={eventId} />{opponentFormPlayers.map((player) => <div key={player.key}><input type="hidden" name="opponentPlayerKey" value={player.key} /><input type="hidden" name={`opponentName_${player.key}`} value={player.name} /><input type="hidden" name={`opponentJersey_${player.key}`} value={player.jersey} />{STAT_COLUMNS.map((column) => <input key={column.key} type="hidden" name={`opponent_${player.key}_${column.key}`} value={saveOpponentValue(player, column.key)} />)}</div>)}<Button type="submit" loading={opponentSavePending} className="w-full">Save opponent stats</Button></form></Card>
         <Card className="border-[var(--primary)]/30 p-4"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Finalize game</h3><p className="text-sm text-[var(--foreground-muted)]">Publishes the final score and completes the fixture.</p></div><Trophy className="size-5" /></div><form action={resultAction} className="mt-4 flex flex-col gap-3"><input type="hidden" name="eventId" value={eventId} /><div className="grid grid-cols-2 gap-2"><ScoreInput label={teamName} value={teamScore} onChange={setTeamScore} /><ScoreInput label={opponentName} value={opponentScore} onChange={setOpponentScore} /></div><Button type="submit" loading={resultPending}>Finalize game</Button></form></Card>
       </div>
 
@@ -350,8 +455,8 @@ export function GameDayConsole({
 
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3"><div><h3 className="font-semibold">Full match box score</h3><p className="text-xs text-[var(--foreground-muted)]">Both teams, including players who have been substituted out.</p></div><BarChart3 className="size-4 text-[var(--foreground-muted)]" /></div>
-        <BoxTable title={teamName} entries={initialEntries.map((entry) => ({ name: displayName(entry), stats: game[entry.player_id] ?? blankLine() }))} total={totals} />
-        <BoxTable title={opponentName} entries={opponent.map((player) => ({ name: `#${player.jersey} ${player.name}`, stats: player.stats }))} total={opponentTotals} />
+        <BoxTable title={teamName} entries={initialEntries.map((entry) => ({ name: displayName(entry), stats: gameLive[entry.player_id] ?? blankLine(), plusMinus: homePlusMinus[entry.player_id] }))} total={totals} teamPossessions={estimatedPossessions(totals)} />
+        <BoxTable title={opponentName} entries={opponentLive.map((player) => ({ name: `#${player.jersey} ${player.name}`, stats: player.stats, plusMinus: opponentPlusMinus[player.key] }))} total={opponentTotals} teamPossessions={estimatedPossessions(opponentTotals)} />
       </Card>
     </div>
   );
@@ -424,8 +529,22 @@ function RosterSwapPanel({
   );
 }
 
-function BoxTable({ title, entries, total }: { title: string; entries: { name: string; stats: StatLine }[]; total: StatLine }) {
-  return <div className="overflow-x-auto border-b border-[var(--border-color)] last:border-0"><div className="px-4 py-2 text-sm font-semibold">{title}</div><table className="w-full min-w-[720px] text-sm"><thead className="bg-[var(--surface-muted)] text-xs text-[var(--foreground-muted)] uppercase"><tr>{["Player", "PTS", "REB", "AST", "STL", "BLK", "TO", "PF", "FG", "3PT", "FT"].map((h) => <th key={h} className="px-2 py-2 text-center first:text-left">{h}</th>)}</tr></thead><tbody className="divide-y divide-[var(--border-color)]">{entries.map((entry) => <tr key={entry.name}><th className="px-3 py-2 text-left font-medium">{entry.name}</th><td className="px-2 py-2 text-center">{entry.stats.points}</td><td className="px-2 py-2 text-center">{entry.stats.rebounds}</td><td className="px-2 py-2 text-center">{entry.stats.assists}</td><td className="px-2 py-2 text-center">{entry.stats.steals}</td><td className="px-2 py-2 text-center">{entry.stats.blocks}</td><td className="px-2 py-2 text-center">{entry.stats.turnovers}</td><td className="px-2 py-2 text-center">{entry.stats.fouls}</td><td className="px-2 py-2 text-center">{entry.stats.fg_made}/{entry.stats.fg_attempts}</td><td className="px-2 py-2 text-center">{entry.stats.three_made}/{entry.stats.three_attempts}</td><td className="px-2 py-2 text-center">{entry.stats.ft_made}/{entry.stats.ft_attempts}</td></tr>)}</tbody><tfoot className="border-t-2 border-[var(--border-color)] font-semibold"><tr><th className="px-3 py-2 text-left">Total</th>{[total.points,total.rebounds,total.assists,total.steals,total.blocks,total.turnovers,total.fouls,`${total.fg_made}/${total.fg_attempts}`,`${total.three_made}/${total.three_attempts}`,`${total.ft_made}/${total.ft_attempts}`].map((v,i)=><td key={i} className="px-2 py-2 text-center">{v}</td>)}</tr></tfoot></table></div>;
+/**
+ * `stats.minutes_played` arrives as live seconds (from gameLive /
+ * opponentLive), not the saved whole-minute figure — formatted with
+ * formatDuration for a MM:SS reading, same as the reference box score's TIM
+ * column. `teamPossessions` is this team's own estimated possessions for the
+ * game, used to turn each row's attempts/turnovers into a usage share; POSS
+ * itself is a team figure, shown once in the total row rather than per row.
+ */
+function BoxTable({ title, entries, total, teamPossessions }: { title: string; entries: { name: string; stats: StatLine; plusMinus?: number }[]; total: StatLine; teamPossessions: number }) {
+  return <div className="overflow-x-auto border-b border-[var(--border-color)] last:border-0"><div className="px-4 py-2 text-sm font-semibold">{title}</div><table className="w-full min-w-[1080px] text-sm"><thead className="bg-[var(--surface-muted)] text-xs text-[var(--foreground-muted)] uppercase"><tr>{["Player", "TIM", "PTS", "REB", "ORB", "DRB", "AST", "STL", "BLK", "TO", "PF", "FG", "3PT", "FT", "TS%", "USG%", "EFF", "+/-"].map((h) => <th key={h} className="px-2 py-2 text-center first:text-left">{h}</th>)}</tr></thead><tbody className="divide-y divide-[var(--border-color)]">{entries.map((entry) => {
+    const ts = trueShootingPercentage(entry.stats.points, entry.stats.fg_attempts, entry.stats.ft_attempts);
+    const usg = usageRate(entry.stats, teamPossessions);
+    const eff = efficiencyRating(entry.stats);
+    const pm = entry.plusMinus;
+    return <tr key={entry.name}><th className="px-3 py-2 text-left font-medium">{entry.name}</th><td className="px-2 py-2 text-center tabular-nums">{formatDuration(entry.stats.minutes_played)}</td><td className="px-2 py-2 text-center">{entry.stats.points}</td><td className="px-2 py-2 text-center">{entry.stats.rebounds}</td><td className="px-2 py-2 text-center">{entry.stats.offensive_rebounds}</td><td className="px-2 py-2 text-center">{entry.stats.defensive_rebounds}</td><td className="px-2 py-2 text-center">{entry.stats.assists}</td><td className="px-2 py-2 text-center">{entry.stats.steals}</td><td className="px-2 py-2 text-center">{entry.stats.blocks}</td><td className="px-2 py-2 text-center">{entry.stats.turnovers}</td><td className="px-2 py-2 text-center">{entry.stats.fouls}</td><td className="px-2 py-2 text-center">{entry.stats.fg_made}/{entry.stats.fg_attempts}</td><td className="px-2 py-2 text-center">{entry.stats.three_made}/{entry.stats.three_attempts}</td><td className="px-2 py-2 text-center">{entry.stats.ft_made}/{entry.stats.ft_attempts}</td><td className="px-2 py-2 text-center">{formatPercentage(ts)}</td><td className="px-2 py-2 text-center">{usg == null ? "—" : `${Math.round(usg)}%`}</td><td className="px-2 py-2 text-center">{eff}</td><td className={`px-2 py-2 text-center tabular-nums ${pm == null || pm === 0 ? "" : pm > 0 ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}`}>{pm == null ? "—" : pm > 0 ? `+${pm}` : pm}</td></tr>;
+  })}</tbody><tfoot className="border-t-2 border-[var(--border-color)] font-semibold"><tr><th className="px-3 py-2 text-left">Total <span className="font-normal text-[var(--foreground-muted)]">· POSS ~{Math.round(teamPossessions)}</span></th><td className="px-2 py-2 text-center">—</td>{[total.points,total.rebounds,total.offensive_rebounds,total.defensive_rebounds,total.assists,total.steals,total.blocks,total.turnovers,total.fouls,`${total.fg_made}/${total.fg_attempts}`,`${total.three_made}/${total.three_attempts}`,`${total.ft_made}/${total.ft_attempts}`].map((v,i)=><td key={i} className="px-2 py-2 text-center">{v}</td>)}<td className="px-2 py-2 text-center">{formatPercentage(trueShootingPercentage(total.points, total.fg_attempts, total.ft_attempts))}</td><td className="px-2 py-2 text-center">—</td><td className="px-2 py-2 text-center">—</td><td className="px-2 py-2 text-center">—</td></tr></tfoot></table></div>;
 }
 
 function ScoreTeam({ name, score, stats, align }: { name: string; score: number; stats?: StatLine; align: "left" | "right" }) { return <div className={align === "right" ? "text-right" : "text-left"}><div className="truncate text-sm font-semibold sm:text-base">{name}</div><div className="text-5xl font-semibold tabular-nums sm:text-6xl">{score}</div>{stats ? <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-white/60"><span>REB {stats.rebounds}</span><span>AST {stats.assists}</span><span>TO {stats.turnovers}</span><span>FOUL {stats.fouls}</span></div> : null}</div>; }
