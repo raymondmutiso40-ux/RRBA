@@ -371,6 +371,8 @@ export const playerMatchStatsSchema = z
     minutesPlayed: z.number().int().min(0).max(200).optional().nullable(),
     points: shotCount,
     rebounds: shotCount,
+    offensiveRebounds: shotCount,
+    defensiveRebounds: shotCount,
     assists: shotCount,
     steals: shotCount,
     blocks: shotCount,
@@ -403,7 +405,18 @@ export const playerMatchStatsSchema = z
   .refine((v) => v.ftMade == null || v.ftAttempts == null || v.ftMade <= v.ftAttempts, {
     message: "Free throws made cannot exceed attempts",
     path: ["ftMade"],
-  });
+  })
+  .refine(
+    (v) =>
+      v.offensiveRebounds == null ||
+      v.defensiveRebounds == null ||
+      v.rebounds == null ||
+      v.offensiveRebounds + v.defensiveRebounds <= v.rebounds,
+    {
+      message: "Offensive + defensive rebounds cannot exceed total rebounds",
+      path: ["offensiveRebounds"],
+    },
+  );
 
 // ---------------------------------------------------------------------------
 // Development
