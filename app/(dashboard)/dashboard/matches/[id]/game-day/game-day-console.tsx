@@ -247,12 +247,12 @@ export function GameDayConsole({
       ctx.fillStyle = "#111827"; ctx.font = "700 28px Arial"; ctx.fillText(title, 70, y); y += 42;
       ctx.fillStyle = "#f3f4f6"; ctx.fillRect(50, y - 30, width - 100, 42);
       ctx.fillStyle = "#111827"; ctx.font = "700 18px Arial";
-      ["PLAYER", "PTS", "REB", "AST", "STL", "BLK", "TO", "PF", "FG", "3PT", "FT"].forEach((h, i) => ctx.fillText(h, [70, 620, 730, 840, 950, 1060, 1170, 1280, 1390, 1530, 1650][i], y - 4));
+      ["PLAYER", "PTS", "REB", "AST", "STL", "BLK", "TO", "PF", "FG", "3PT", "FT"].forEach((h, i) => ctx.fillText(h, [70, 620, 730, 840, 950, 1060, 1170, 1280, 1390, 1530, 1650][i] ?? 70, y - 4));
       y += 38; ctx.font = "20px Arial";
       for (const row of rows) {
         ctx.fillStyle = "#111827"; ctx.fillText(row.name.slice(0, 38), 70, y);
         const values = [row.stats.points, row.stats.rebounds, row.stats.assists, row.stats.steals, row.stats.blocks, row.stats.turnovers, row.stats.fouls, `${row.stats.fg_made}/${row.stats.fg_attempts}`, `${row.stats.three_made}/${row.stats.three_attempts}`, `${row.stats.ft_made}/${row.stats.ft_attempts}`];
-        values.forEach((v, i) => ctx.fillText(String(v), [620, 730, 840, 950, 1060, 1170, 1280, 1390, 1530, 1650][i], y));
+        values.forEach((v, i) => ctx.fillText(String(v), [620, 730, 840, 950, 1060, 1170, 1280, 1390, 1530, 1650][i] ?? 620, y));
         y += rowH;
       }
       y += 25;
@@ -306,7 +306,7 @@ export function GameDayConsole({
       <Card className="p-3 sm:p-5">
         <div className="mb-4 flex items-center justify-between"><div><div className="text-xs font-medium tracking-wide text-[var(--foreground-muted)] uppercase">Recording</div><h2 className="text-xl font-semibold">{selectedSide === "home" ? (selected ? displayName(selected) : "Select a player") : (selectedOpponent ? `#${selectedOpponent.jersey} ${selectedOpponent.name}` : "Select opponent")}</h2></div><div className="text-right"><div className="text-3xl font-semibold tabular-nums">{selectedSide === "home" ? selectedStats.points : selectedOpponent?.stats.points ?? 0}</div><div className="text-xs text-[var(--foreground-muted)]">PTS</div></div></div>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {["+3", "+2", "+FT", "MISS 3", "MISS 2", "MISS FT", "ORB", "DRB", "AST", "BLK", "STL", "TO", "FOUL"].map((label) => <ActionButton key={label} label={label} tone={label.startsWith("MISS") ? "danger" : label.startsWith("+") ? "primary" : "info"} onClick={() => actionFor(label)?.()} />)}
+          {["+3", "+2", "+FT", "MISS 3", "MISS 2", "MISS FT", "ORB", "DRB", "AST", "BLK", "STL", "TO", "FOUL"].map((label) => <ActionButton key={label} label={label} tone={label.startsWith("MISS") ? "danger" : label.startsWith("+") ? "primary" : "info"} onClick={() => actionFor(label)} />)}
           <button type="button" onClick={undo} disabled={!history.length} className="flex min-h-20 items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-muted)] text-sm font-semibold disabled:opacity-40"><Undo2 className="size-5" /> Undo</button>
         </div>
       </Card>
@@ -336,7 +336,7 @@ export function GameDayConsole({
         <Card className="border-[var(--primary)]/30 p-4"><div className="flex items-center justify-between"><div><h3 className="font-semibold">Finalize game</h3><p className="text-sm text-[var(--foreground-muted)]">Publishes the final score and completes the fixture.</p></div><Trophy className="size-5" /></div><form action={resultAction} className="mt-4 flex flex-col gap-3"><input type="hidden" name="eventId" value={eventId} /><div className="grid grid-cols-2 gap-2"><ScoreInput label={teamName} value={teamScore} onChange={setTeamScore} /><ScoreInput label={opponentName} value={opponentScore} onChange={setOpponentScore} /></div><Button type="submit" loading={resultPending}>Finalize game</Button></form></Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><FooterButton icon={<MoreVertical />} label="Reset" onClick={resetDraft} /><FooterButton icon={<ArrowLeftRight />} label="Swap" onClick={() => { if (selectedSide === "home" && onCourt.length) setSelectedId(onCourt[(onCourt.indexOf(selectedId) + 1) % onCourt.length]); if (selectedSide === "opponent" && activeOpponent.length) setSelectedOpponentKey(activeOpponent[(activeOpponent.indexOf(selectedOpponentKey) + 1) % activeOpponent.length]); }} /><FooterButton icon={<Undo2 />} label="Undo" onClick={undo} disabled={!history.length} /><FooterButton icon={<Download />} label="JPEG" onClick={downloadJpeg} /></div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><FooterButton icon={<MoreVertical />} label="Reset" onClick={resetDraft} /><FooterButton icon={<ArrowLeftRight />} label="Swap" onClick={() => { if (selectedSide === "home" && onCourt.length) { const nextId = onCourt[(onCourt.indexOf(selectedId) + 1) % onCourt.length]; if (nextId) setSelectedId(nextId); } if (selectedSide === "opponent" && activeOpponent.length) { const nextKey = activeOpponent[(activeOpponent.indexOf(selectedOpponentKey) + 1) % activeOpponent.length]; if (nextKey) setSelectedOpponentKey(nextKey); } }} /><FooterButton icon={<Undo2 />} label="Undo" onClick={undo} disabled={!history.length} /><FooterButton icon={<Download />} label="JPEG" onClick={downloadJpeg} /></div>
 
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3"><div><h3 className="font-semibold">Full match box score</h3><p className="text-xs text-[var(--foreground-muted)]">Both teams, including players who have been substituted out.</p></div><BarChart3 className="size-4 text-[var(--foreground-muted)]" /></div>
