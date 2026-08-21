@@ -13,7 +13,7 @@ import {
 } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCoachedTeamIds } from "@/lib/activity/queries";
-import { getMatch, getMatchBoxScore } from "@/lib/matches/queries";
+import { getMatch, getMatchBoxScore, getOpponentBoxScore } from "@/lib/matches/queries";
 import { EVENT_STATUS_LABELS, eventStatusTone, formatTime } from "@/lib/activity/labels";
 import { formatDate } from "@/lib/utils";
 
@@ -67,7 +67,10 @@ export default async function GameDayPage({
     );
   }
 
-  const entries = await getMatchBoxScore(match.id, match.team_id);
+  const [entries, opponentEntries] = await Promise.all([
+    getMatchBoxScore(match.id, match.team_id),
+    getOpponentBoxScore(match.id),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 pb-6">
@@ -100,6 +103,7 @@ export default async function GameDayPage({
         initialTeamScore={match.final_score_team ?? 0}
         initialOpponentScore={match.final_score_opp ?? 0}
         initialEntries={entries}
+        initialOpponentEntries={opponentEntries}
       />
     </div>
   );
