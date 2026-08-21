@@ -622,6 +622,75 @@ export async function saveBoxScoreAction(
   };
 }
 
+
+/** Saves manually-entered opponent player statistics for a match. */
+export async function saveOpponentBoxScoreAction(
+  _prev: MatchActionState,
+  formData: FormData,
+): Promise<MatchActionState> {
+  const user = await requireStaff();
+  const eventId = text(formData, "eventId");
+  if (!eventId) return { ok: false, message: "Missing fixture reference." };
+
+  const supabase = await createClient();
+  const { data: event } = await supabase
+    .from("events")
+    .select("id, team_id, title")
+    .eq("id", eventId)
+    .eq("event_type", "match")
+    .maybeSingle();
+
+  if (!event) return { ok: false, message: "That fixture no longer exists." };
+  const coachedTeamIds = await getCoachedTeamIds(user.id);
+  if (!canRecordMatchStats(user.roles, event.team_id, coachedTeamIds)) {
+    return { ok: false, message: "You can only record stats for teams you coach." };
+  }
+
+  const keys = formData
+    .getAll("opponentPlayerKey")
+    .filter((value): value is string => typeof value === "string" && value.trim() !== "");
+  const rows: Record<string, unknown>[] = [];
+
+  for (const key of keys) {
+    const playerName = text(formData, `opponentName_${key}`) || `Opponent ${key}`;
+    const jerseyRaw = optionalNumber(formData, `opponentJersey_${key}`);
+    const stats: Record<string, number> = {};
+    let hasAny = false;
+    for (const column of STAT_COLUMNS) {
+      const value = optionalNumber(formData, `opponent_${key}_${column.key}`);
+      if (value !== null && Number.isFinite(value)) {
+        stats[column.key] = value;
+        hasAny = true;
+      }
+    }
+    if (!hasAny) continue;
+    rows.push({
+      event_id: eventId,
+      player_key: key,
+      player_name: playerName.slice(0, 120),
+      jersey_number: jerseyRaw !== null && Number.isFinite(jerseyRaw) ? Math.trunc(jerseyRaw) : null,
+      ...stats,
+    });
+  }
+
+  if (!rows.length) return { ok: false, message: "Nothing to save — no opponent figures were entered." };
+
+  const opponentTable = (supabase as unknown as { from: (table: string) => any }).from("match_opponent_stats");
+  const { error } = await opponentTable.upsert(rows, { onConflict: "event_id,player_key" });
+  if (error) return { ok: false, message: error.message };
+
+  await recordAudit({
+    action: "match.opponent_stats",
+    entity: "events",
+    entityId: eventId,
+    metadata: { title: event.title, players: rows.length },
+  });
+
+  revalidatePath("/dashboard/matches");
+  revalidatePath(`/dashboard/matches/${eventId}`);
+  return { ok: true, message: `Opponent stats saved for ${rows.length} player${rows.length === 1 ? "" : "s"}.` };
+}
+
 // ---------------------------------------------------------------------------
 // Matchday squad
 // ---------------------------------------------------------------------------
