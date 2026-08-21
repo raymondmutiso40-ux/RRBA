@@ -387,6 +387,53 @@ export interface Database {
         >;
         Relationships: [];
       };
+      match_opponent_stats: {
+        Row: {
+          id: string;
+          event_id: string;
+          player_key: string;
+          player_name: string;
+          jersey_number: number | null;
+          minutes_played: number | null;
+          points: number | null;
+          rebounds: number | null;
+          assists: number | null;
+          steals: number | null;
+          blocks: number | null;
+          turnovers: number | null;
+          fouls: number | null;
+          fg_attempts: number | null;
+          fg_made: number | null;
+          three_attempts: number | null;
+          three_made: number | null;
+          ft_attempts: number | null;
+          ft_made: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          event_id: string;
+          player_key: string;
+          player_name: string;
+          jersey_number?: number | null;
+          minutes_played?: number | null;
+          points?: number | null;
+          rebounds?: number | null;
+          assists?: number | null;
+          steals?: number | null;
+          blocks?: number | null;
+          turnovers?: number | null;
+          fouls?: number | null;
+          fg_attempts?: number | null;
+          fg_made?: number | null;
+          three_attempts?: number | null;
+          three_made?: number | null;
+          ft_attempts?: number | null;
+          ft_made?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["match_opponent_stats"]["Insert"]>;
+        Relationships: [];
+      };
       skill_metrics: {
         Row: {
           id: string;
