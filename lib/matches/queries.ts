@@ -413,6 +413,8 @@ export type OpponentBoxScoreEntry = {
   minutes_played: number;
   points: number;
   rebounds: number;
+  offensive_rebounds: number;
+  defensive_rebounds: number;
   assists: number;
   steals: number;
   blocks: number;
