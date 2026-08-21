@@ -66,6 +66,16 @@ export const STAT_COLUMNS = [
   { key: "minutes_played", short: "MIN", label: "Minutes played" },
   { key: "points", short: "PTS", label: "Points" },
   { key: "rebounds", short: "REB", label: "Rebounds" },
+  {
+    key: "offensive_rebounds",
+    short: "ORB",
+    label: "Offensive rebounds",
+  },
+  {
+    key: "defensive_rebounds",
+    short: "DRB",
+    label: "Defensive rebounds",
+  },
   { key: "assists", short: "AST", label: "Assists" },
   { key: "steals", short: "STL", label: "Steals" },
   { key: "blocks", short: "BLK", label: "Blocks" },
@@ -137,4 +147,99 @@ export function perGameAverages(
 
 export function formatAverage(value: number | undefined): string {
   return value === undefined ? "—" : value.toFixed(1);
+}
+
+/**
+ * True shooting percentage — points per shooting possession, weighting free
+ * throws at 0.44 possessions each. Null (not zero) when nothing was taken,
+ * for the same reason as {@link shootingPercentage}.
+ */
+export function trueShootingPercentage(
+  points: number,
+  fgAttempts: number,
+  ftAttempts: number,
+): number | null {
+  const denominator = 2 * (fgAttempts + 0.44 * ftAttempts);
+  if (denominator <= 0) return null;
+  return points / denominator;
+}
+
+/**
+ * A single-number efficiency rating (the common PTS+REB+AST+STL+BLK, minus
+ * missed shots and turnovers formula) — a quick read on a box score line,
+ * not a substitute for the underlying counts.
+ */
+export function efficiencyRating(line: {
+  points: number;
+  rebounds: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+  fg_made: number;
+  fg_attempts: number;
+  ft_made: number;
+  ft_attempts: number;
+  turnovers: number;
+}): number {
+  const missedFg = Math.max(0, line.fg_attempts - line.fg_made);
+  const missedFt = Math.max(0, line.ft_attempts - line.ft_made);
+  return (
+    line.points +
+    line.rebounds +
+    line.assists +
+    line.steals +
+    line.blocks -
+    missedFg -
+    missedFt -
+    line.turnovers
+  );
+}
+
+/** "5:07" from a count of seconds — the live, clock-synced form of MIN. */
+export function formatDuration(totalSeconds: number): string {
+  const safe = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+/**
+ * Estimated possessions for a team's game — the standard box-score estimate:
+ * shot attempts, minus offensive rebounds (an offensive board extends the
+ * same possession rather than starting a new one), plus turnovers, plus a
+ * fraction of free-throw trips (most FT trips come in pairs or one-and-ones,
+ * so 0.44 approximates the share that represents a genuinely new possession).
+ * This is a team-level figure — there is no such thing as one player's own
+ * possessions count, only their share of the team's.
+ */
+export function estimatedPossessions(team: {
+  fg_attempts: number;
+  offensive_rebounds: number;
+  turnovers: number;
+  ft_attempts: number;
+}): number {
+  return Math.max(
+    0,
+    team.fg_attempts - team.offensive_rebounds + team.turnovers + 0.44 * team.ft_attempts,
+  );
+}
+
+/**
+ * A simplified usage rate — the share of the team's estimated possessions a
+ * player ended, by their own shot attempts, free-throw trips, and turnovers.
+ *
+ * This is lighter than the full NBA usage formula, which also weights by how
+ * many team minutes the player shared the floor for. That weighting needs a
+ * team-minutes figure this app doesn't separately track, so this version
+ * reads as "share of the team's plays this player used" rather than a
+ * minutes-adjusted rate — close enough for a coach sanity-checking who is
+ * shooting the team out of its offense, not a stat to publish alongside
+ * NBA.com's.
+ */
+export function usageRate(
+  line: { fg_attempts: number; ft_attempts: number; turnovers: number },
+  teamPossessions: number,
+): number | null {
+  if (teamPossessions <= 0) return null;
+  return (100 * (line.fg_attempts + 0.44 * line.ft_attempts + line.turnovers)) / teamPossessions;
 }
