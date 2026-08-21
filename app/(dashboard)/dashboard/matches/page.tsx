@@ -219,6 +219,12 @@ async function MatchTable({ filter }: { filter: MatchFilter }) {
                         : "Away"}
                     {match.competition ? ` · ${match.competition}` : ""}
                   </span>
+                  <Link
+                    href={`/dashboard/matches/${match.id}/game-day`}
+                    className="mt-1 inline-flex text-xs font-medium text-[var(--primary)] hover:underline"
+                  >
+                    Open Game Day →
+                  </Link>
                 </TableCell>
                 <TableCell>
                   {match.team_id ? (
