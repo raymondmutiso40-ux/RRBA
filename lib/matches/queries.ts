@@ -405,3 +405,35 @@ export async function getSquadCandidates(eventId: string) {
 
   return (playersResult.data ?? []).filter((player) => !taken.has(player.id));
 }
+
+export type OpponentBoxScoreEntry = {
+  player_key: string;
+  player_name: string;
+  jersey_number: number | null;
+  minutes_played: number;
+  points: number;
+  rebounds: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+  turnovers: number;
+  fouls: number;
+  fg_attempts: number;
+  fg_made: number;
+  three_attempts: number;
+  three_made: number;
+  ft_attempts: number;
+  ft_made: number;
+};
+
+/** Loads the manually recorded opponent roster/stat lines for Game Day. */
+export async function getOpponentBoxScore(eventId: string): Promise<OpponentBoxScoreEntry[]> {
+  const supabase = await createClient();
+  const table = (supabase as unknown as { from: (table: string) => any }).from("match_opponent_stats");
+  const { data, error } = await table
+    .select("*")
+    .eq("event_id", eventId)
+    .order("jersey_number", { ascending: true });
+  if (error) throw new Error(`Could not load opponent stats: ${error.message}`);
+  return (data ?? []) as OpponentBoxScoreEntry[];
+}
