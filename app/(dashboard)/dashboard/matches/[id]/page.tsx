@@ -139,11 +139,18 @@ export default async function MatchDetailPage({
           </div>
         </div>
 
-        {manage ? (
-          <Link href={`/dashboard/matches/${match.id}/edit`}>
-            <Button variant="outline">Edit fixture</Button>
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {record ? (
+            <Link href={`/dashboard/matches/${match.id}/game-day`}>
+              <Button>Open Game Day</Button>
+            </Link>
+          ) : null}
+          {manage ? (
+            <Link href={`/dashboard/matches/${match.id}/edit`}>
+              <Button variant="outline">Edit fixture</Button>
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid gap-4 lg:grid-cols-3">
