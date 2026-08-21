@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
-import { ArrowLeftRight, BarChart3, CircleHelp, MoreVertical, Save, Trophy, Undo2 } from "lucide-react";
+import { ArrowLeftRight, BarChart3, ChevronRight, CircleHelp, MoreVertical, Save, Trophy, Undo2 } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
