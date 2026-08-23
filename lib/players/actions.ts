@@ -68,7 +68,7 @@ function toRow(values: ReturnType<typeof readPlayerForm> & object) {
   return {
     first_name: parsed.firstName,
     last_name: parsed.lastName,
-    date_of_birth: parsed.dateOfBirth,
+    date_of_birth: parsed.dateOfBirth ? parsed.dateOfBirth : null,
     gender: parsed.gender,
     email: parsed.email ? parsed.email : null,
     phone: parsed.phone ? parsed.phone : null,

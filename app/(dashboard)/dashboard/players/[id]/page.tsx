@@ -108,7 +108,7 @@ export default async function PlayerProfilePage({
               <Badge tone={statusTone(player.status)}>
                 {PLAYER_STATUS_LABELS[player.status]}
               </Badge>
-              <span>{calculateAge(player.date_of_birth)} years old</span>
+              <span>{player.date_of_birth ? `${calculateAge(player.date_of_birth)} years old` : "Age not set"}</span>
               {currentTeam ? <span>· {currentTeam.name}</span> : null}
               {player.jersey_number !== null ? (
                 <span>· #{player.jersey_number}</span>
@@ -132,7 +132,7 @@ export default async function PlayerProfilePage({
           <CardContent>
             <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
               <Field label="Date of birth">
-                {formatDate(player.date_of_birth)}
+                {player.date_of_birth ? formatDate(player.date_of_birth) : "—"}
               </Field>
               <Field label="Gender">{GENDER_LABELS[player.gender]}</Field>
               <Field label="Position">

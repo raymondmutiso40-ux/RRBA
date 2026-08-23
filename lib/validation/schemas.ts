@@ -49,9 +49,8 @@ export const profileUpdateSchema = z.object({
   phone: z
     .string()
     .trim()
-    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
-    .optional()
-    .or(z.literal("")),
+    .min(7, "Phone number is required")
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number"),
 });
 
 // ---------------------------------------------------------------------------
@@ -68,15 +67,16 @@ export const playerSchema = z.object({
     .refine((value) => {
       const date = new Date(`${value}T00:00:00Z`);
       return !Number.isNaN(date.getTime());
-    }, "Invalid date"),
+    }, "Invalid date")
+    .optional()
+    .or(z.literal("")),
   gender: z.enum(["male", "female", "other", "undisclosed"]),
   email: z.string().trim().toLowerCase().email().optional().or(z.literal("")),
   phone: z
     .string()
     .trim()
-    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
-    .optional()
-    .or(z.literal("")),
+    .min(7, "Phone number is required")
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number"),
   address: z.string().trim().max(500).optional().or(z.literal("")),
   position: z
     .enum(["point_guard", "shooting_guard", "small_forward", "power_forward", "center"])
@@ -561,9 +561,8 @@ export const contactSubmissionSchema = z.object({
   phone: z
     .string()
     .trim()
-    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number")
-    .optional()
-    .or(z.literal("")),
+    .min(7, "Phone number is required")
+    .regex(/^\+?[0-9 ()-]{7,20}$/, "Enter a valid phone number"),
   subject: z.string().trim().max(200).optional().or(z.literal("")),
   message: z.string().trim().min(10).max(4000),
   playerAge: z.number().int().min(3).max(30).optional().nullable(),

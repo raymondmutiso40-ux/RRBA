@@ -177,7 +177,7 @@ async function PlayerTable({
                     </span>
                   ) : null}
                 </TableCell>
-                <TableCell>{calculateAge(player.date_of_birth)}</TableCell>
+                <TableCell>{player.date_of_birth ? calculateAge(player.date_of_birth) : "—"}</TableCell>
                 <TableCell>
                   {player.position ? POSITION_ABBR[player.position] : "—"}
                 </TableCell>

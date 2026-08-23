@@ -71,8 +71,8 @@ export function PlayerForm({ player }: PlayerFormProps) {
         <CardHeader>
           <CardTitle>Personal details</CardTitle>
           <CardDescription>
-            Name and date of birth are required. Everything else can be filled
-            in later.
+            Full name (first and last name) and phone number are required.
+            Everything else is optional and can be filled in later.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -98,7 +98,6 @@ export function PlayerForm({ player }: PlayerFormProps) {
             name="dateOfBirth"
             type="date"
             label="Date of birth"
-            required
             defaultValue={player?.date_of_birth ?? ""}
             error={fieldError("dateOfBirth")}
           />
@@ -137,7 +136,8 @@ export function PlayerForm({ player }: PlayerFormProps) {
             name="phone"
             type="tel"
             label="Phone"
-            hint="e.g. +254 712 345678"
+            hint="Required • e.g. +254 712 345678"
+            required
             autoComplete="tel"
             defaultValue={player?.phone ?? ""}
             error={fieldError("phone")}

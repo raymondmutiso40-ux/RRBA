@@ -119,7 +119,7 @@ export default async function MyProfilePage() {
                 {player.first_name} {player.last_name}
               </CardTitle>
               <CardDescription>
-                {calculateAge(player.date_of_birth)} years old
+                {player.date_of_birth ? `${calculateAge(player.date_of_birth)} years old` : "Age not set"}
                 {player.jersey_number !== null
                   ? ` · shirt #${player.jersey_number}`
                   : ""}

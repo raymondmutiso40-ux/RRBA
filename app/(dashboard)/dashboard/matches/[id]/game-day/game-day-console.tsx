@@ -333,43 +333,202 @@ export function GameDayConsole({
     window.localStorage.removeItem(storageKey);
   }
 
-  function downloadJpeg() {
+  async function downloadJpeg() {
+    const columns = [
+      { h: "PLAYER", w: 300, value: (r: StatLine) => "" },
+      { h: "ACT", w: 70, value: (r: StatLine) => r.minutes_played > 0 ? "✓" : "—" },
+      { h: "TIM", w: 90, value: (r: StatLine) => formatDuration(r.minutes_played) },
+      { h: "PTS", w: 70, value: (r: StatLine) => r.points },
+      { h: "TREB", w: 75, value: (r: StatLine) => r.rebounds },
+      { h: "AST", w: 65, value: (r: StatLine) => r.assists },
+      { h: "STL", w: 65, value: (r: StatLine) => r.steals },
+      { h: "TO", w: 65, value: (r: StatLine) => r.turnovers },
+      { h: "BLK", w: 65, value: (r: StatLine) => r.blocks },
+      { h: "FGM", w: 70, value: (r: StatLine) => r.fg_made },
+      { h: "FGA", w: 70, value: (r: StatLine) => r.fg_attempts },
+      { h: "FG%", w: 75, value: (r: StatLine) => percentage(r.fg_made, r.fg_attempts) },
+      { h: "3FGM", w: 75, value: (r: StatLine) => r.three_made },
+      { h: "3FGA", w: 75, value: (r: StatLine) => r.three_attempts },
+      { h: "3FG%", w: 80, value: (r: StatLine) => percentage(r.three_made, r.three_attempts) },
+      { h: "2FGM", w: 75, value: (r: StatLine) => Math.max(0, r.fg_made - r.three_made) },
+      { h: "2FGA", w: 75, value: (r: StatLine) => Math.max(0, r.fg_attempts - r.three_attempts) },
+      { h: "2FG%", w: 80, value: (r: StatLine) => percentage(Math.max(0, r.fg_made - r.three_made), Math.max(0, r.fg_attempts - r.three_attempts)) },
+      { h: "FTM", w: 70, value: (r: StatLine) => r.ft_made },
+      { h: "FTA", w: 70, value: (r: StatLine) => r.ft_attempts },
+      { h: "FT%", w: 75, value: (r: StatLine) => percentage(r.ft_made, r.ft_attempts) },
+      { h: "TS%", w: 75, value: (r: StatLine) => formatPercentage(trueShootingPercentage(r.points, r.fg_attempts, r.ft_attempts)) },
+      { h: "ORB", w: 70, value: (r: StatLine) => r.offensive_rebounds },
+      { h: "DRB", w: 70, value: (r: StatLine) => r.defensive_rebounds },
+      { h: "FOL", w: 70, value: (r: StatLine) => r.fouls },
+      { h: "EFF", w: 70, value: (r: StatLine) => efficiencyRating(r) },
+      { h: "PIR", w: 70, value: (r: StatLine) => efficiencyRating(r) - r.fouls },
+      { h: "+/-", w: 75, value: (r: StatLine) => "" },
+      { h: "POSS", w: 80, value: (r: StatLine) => Math.round(estimatedPossessions(r)) },
+      { h: "USG%", w: 80, value: (r: StatLine) => "" },
+    ];
+
+    type DownloadRow = { name: string; stats: StatLine; plusMinus: number | undefined };
+    const homeRows: DownloadRow[] = initialEntries.map((entry) => ({
+      name: displayName(entry),
+      stats: gameLive[entry.player_id] ?? blankLine(),
+      plusMinus: homePlusMinus[entry.player_id],
+    }));
+    const opponentRows: DownloadRow[] = opponentLive.map((player) => ({
+      name: `#${player.jersey} ${player.name}`,
+      stats: player.stats,
+      plusMinus: opponentPlusMinus[player.key],
+    }));
+    const homePoss = estimatedPossessions(totals);
+    const oppPoss = estimatedPossessions(opponentTotals);
+    const startingFive: DownloadRow[] = activeOpponent.slice(0, 5).map((key) => {
+      const player = opponentLive.find((entry) => entry.key === key);
+      if (!player) return null;
+      return {
+        name: `#${player.jersey} ${player.name}`,
+        stats: player.stats,
+        plusMinus: opponentPlusMinus[player.key],
+      };
+    }).filter((row): row is DownloadRow => row !== null);
+
+    const sectionGap = 42;
+    const titleH = 58;
+    const headerH = 42;
+    const rowH = 44;
+    const footerH = 42;
+    const width = columns.reduce((sum, column) => sum + column.w, 0) + 100;
+    const sectionHeights = [
+      titleH + headerH + homeRows.length * rowH + sectionGap,
+      titleH + headerH + opponentRows.length * rowH + sectionGap,
+      startingFive.length ? titleH + headerH + startingFive.length * rowH + sectionGap : 0,
+    ];
+    const height = 230 + sectionHeights.reduce((a, b) => a + b, 0) + footerH;
     const canvas = document.createElement("canvas");
-    const width = 1800;
-    const rowH = 54;
-    const ownRows = initialEntries.length;
-    const oppRows = opponent.length;
     canvas.width = width;
-    canvas.height = 420 + (ownRows + oppRows + 8) * rowH;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, width, canvas.height); ctx.fillStyle = "#111827";
-    ctx.font = "700 44px Arial"; ctx.fillText(`${teamName} ${teamScore}  -  ${opponentScore} ${opponentName}`, 70, 75);
-    ctx.font = "24px Arial"; ctx.fillStyle = "#4b5563"; ctx.fillText(`RRBA Game Day • Q${quarter} • ${clockText}`, 70, 120);
-    let y = 180;
-    const drawSection = (title: string, rows: { name: string; stats: StatLine }[]) => {
-      ctx.fillStyle = "#111827"; ctx.font = "700 28px Arial"; ctx.fillText(title, 70, y); y += 42;
-      ctx.fillStyle = "#f3f4f6"; ctx.fillRect(50, y - 30, width - 100, 42);
-      ctx.fillStyle = "#111827"; ctx.font = "700 18px Arial";
-      ["PLAYER", "PTS", "REB", "AST", "STL", "BLK", "TO", "PF", "FG", "3PT", "FT"].forEach((h, i) => ctx.fillText(h, [70, 620, 730, 840, 950, 1060, 1170, 1280, 1390, 1530, 1650][i] ?? 70, y - 4));
-      y += 38; ctx.font = "20px Arial";
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    // RRBA logo watermark: kept behind the table so it remains visible without
+    // making any player/stat values hard to read.
+    try {
+      const logo = new Image();
+      logo.crossOrigin = "anonymous";
+      await new Promise<void>((resolve) => {
+        logo.onload = () => resolve();
+        logo.onerror = () => resolve();
+        logo.src = "/brand/rrba-logo.jpeg";
+      });
+      if (logo.naturalWidth) {
+        const maxW = Math.min(520, width * 0.3);
+        const ratio = logo.naturalHeight / logo.naturalWidth;
+        const logoW = maxW;
+        const logoH = logoW * ratio;
+        ctx.save();
+        ctx.globalAlpha = 0.08;
+        ctx.drawImage(logo, (width - logoW) / 2, 300, logoW, logoH);
+        ctx.restore();
+      }
+    } catch { /* Logo is decorative; the export still works without it. */ }
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "700 40px Arial";
+    ctx.fillText(`${teamName} ${teamScore}  -  ${opponentScore} ${opponentName}`, 50, 58);
+    ctx.font = "22px Arial";
+    ctx.fillStyle = "#4b5563";
+    ctx.fillText("Runda Ridge Basketball Academy • Game Day Statistics", 50, 92);
+    ctx.fillText(`Q${quarter} • Game clock ${clockText} • Full player list`, 50, 122);
+
+    // Small logo in the header as a clean academy mark.
+    try {
+      const logo = new Image();
+      logo.crossOrigin = "anonymous";
+      await new Promise<void>((resolve) => {
+        logo.onload = () => resolve();
+        logo.onerror = () => resolve();
+        logo.src = "/brand/rrba-logo.jpeg";
+      });
+      if (logo.naturalWidth) {
+        const logoH = 105;
+        const logoW = logo.naturalWidth / logo.naturalHeight * logoH;
+        ctx.drawImage(logo, width - logoW - 40, 25, logoW, logoH);
+      }
+    } catch { /* decorative */ }
+
+    let y = 170;
+    const drawSection = (title: string, rows: DownloadRow[], teamPossessions: number, subtitle?: string) => {
+      if (!rows.length) return;
+      ctx.fillStyle = "#111827";
+      ctx.font = "700 25px Arial";
+      ctx.fillText(title, 50, y);
+      if (subtitle) {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#6b7280";
+        ctx.fillText(subtitle, 50 + ctx.measureText(title).width + 16, y);
+      }
+      y += 16;
+
+      let x = 50;
+      ctx.fillStyle = "#0f766e";
+      ctx.fillRect(x, y, width - 100, headerH);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 13px Arial";
+      for (const column of columns) {
+        const alignLeft = column.h === "PLAYER";
+        ctx.textAlign = alignLeft ? "left" : "center";
+        ctx.fillText(column.h, alignLeft ? x + 8 : x + column.w / 2, y + 27);
+        x += column.w;
+      }
+      ctx.textAlign = "left";
+      y += headerH;
+
       for (const row of rows) {
-        ctx.fillStyle = "#111827"; ctx.fillText(row.name.slice(0, 38), 70, y);
-        const values = [row.stats.points, row.stats.rebounds, row.stats.assists, row.stats.steals, row.stats.blocks, row.stats.turnovers, row.stats.fouls, `${row.stats.fg_made}/${row.stats.fg_attempts}`, `${row.stats.three_made}/${row.stats.three_attempts}`, `${row.stats.ft_made}/${row.stats.ft_attempts}`];
-        values.forEach((v, i) => ctx.fillText(String(v), [620, 730, 840, 950, 1060, 1170, 1280, 1390, 1530, 1650][i] ?? 620, y));
+        x = 50;
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(50, y, width - 100, rowH);
+        ctx.strokeStyle = "#e5e7eb";
+        ctx.beginPath(); ctx.moveTo(50, y + rowH); ctx.lineTo(width - 50, y + rowH); ctx.stroke();
+        ctx.fillStyle = "#111827";
+        ctx.font = "15px Arial";
+        const rowValues = columns.map((column) => {
+          if (column.h === "PLAYER") return row.name;
+          if (column.h === "+/-") return row.plusMinus == null ? "—" : row.plusMinus > 0 ? `+${row.plusMinus}` : String(row.plusMinus);
+          if (column.h === "USG%") {
+            const poss = estimatedPossessions(row.stats);
+            return teamPossessions > 0 ? `${Math.round((poss / teamPossessions) * 100)}%` : "—";
+          }
+          return String(column.value(row.stats));
+        });
+        columns.forEach((column, i) => {
+          const value = rowValues[i];
+          ctx.textAlign = column.h === "PLAYER" ? "left" : "center";
+          const rendered = String(value).slice(0, column.h === "PLAYER" ? 38 : 12);
+          ctx.fillText(rendered, column.h === "PLAYER" ? x + 8 : x + column.w / 2, y + 28);
+          x += column.w;
+        });
+        ctx.textAlign = "left";
         y += rowH;
       }
-      y += 25;
+      y += sectionGap;
     };
-    drawSection(teamName, initialEntries.map((e) => ({ name: displayName(e), stats: gameLive[e.player_id] ?? blankLine() })));
-    drawSection(opponentName, opponentLive.map((p) => ({ name: `#${p.jersey} ${p.name}`, stats: p.stats })));
-    ctx.fillStyle = "#6b7280"; ctx.font = "18px Arial"; ctx.fillText("Generated by RRBA", 70, canvas.height - 35);
-    const link = document.createElement("a"); link.download = `RRBA-${teamName.replace(/[^a-z0-9]+/gi, "-")}-vs-${opponentName.replace(/[^a-z0-9]+/gi, "-")}-stats.jpg`; link.href = canvas.toDataURL("image/jpeg", 0.94); link.click();
+
+    drawSection(teamName, homeRows, homePoss);
+    drawSection(opponentName, opponentRows, oppPoss);
+    drawSection("Opponent Starting Five", startingFive, oppPoss, "Starting lineup at game start / current active five");
+
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "15px Arial";
+    ctx.fillText("Generated by RRBA • Runda Ridge Basketball Academy", 50, height - 18);
+
+    const link = document.createElement("a");
+    link.download = `RRBA-${teamName.replace(/[^a-z0-9]+/gi, "-")}-vs-${opponentName.replace(/[^a-z0-9]+/gi, "-")}-stats.jpg`;
+    link.href = canvas.toDataURL("image/jpeg", 0.95);
+    link.click();
   }
 
   const clockText = `${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`;
-  const homeBench = initialEntries.filter((entry) => !onCourt.includes(entry.player_id));
-  const opponentBench = opponent.filter((player) => !activeOpponent.includes(player.key));
   const opponentFormPlayers = opponent;
 
   return (
@@ -422,13 +581,13 @@ export function GameDayConsole({
           <RosterSwapPanel
             title={`${teamName} lineup`}
             onCourt={onCourt.map((id) => { const entry = initialEntries.find((e) => e.player_id === id); return { id, label: entry ? displayName(entry) : id }; })}
-            bench={homeBench.map((e) => ({ id: e.player_id, label: displayName(e) }))}
+            fullList={initialEntries.map((e) => ({ id: e.player_id, label: displayName(e) }))}
             onSub={(outId, inId) => substitute("home", outId, inId)}
           />
           <RosterSwapPanel
             title={`${opponentName} lineup`}
             onCourt={activeOpponent.map((key) => { const player = opponent.find((p) => p.key === key); return { id: key, label: player ? `#${player.jersey} ${player.name}` : key }; })}
-            bench={opponentBench.map((p) => ({ id: p.key, label: `#${p.jersey} ${p.name}` }))}
+            fullList={opponent.map((p) => ({ id: p.key, label: `#${p.jersey} ${p.name}` }))}
             onSub={(outId, inId) => substitute("opponent", outId, inId)}
           />
         </div>
@@ -465,12 +624,12 @@ export function GameDayConsole({
 function RosterSwapPanel({
   title,
   onCourt,
-  bench,
+  fullList,
   onSub,
 }: {
   title: string;
   onCourt: { id: string; label: string }[];
-  bench: { id: string; label: string }[];
+  fullList: { id: string; label: string }[];
   onSub: (outId: string, inId: string) => void;
 }) {
   const [pendingOut, setPendingOut] = useState<string | null>(null);
@@ -498,7 +657,7 @@ function RosterSwapPanel({
           </button>
         ) : null}
       </div>
-      <p className="mb-2 text-[11px] text-[var(--foreground-muted)]">Tap a player on court, then tap a bench player (either order) to swap them.</p>
+      <p className="mb-2 text-[11px] text-[var(--foreground-muted)]">Tap a player on court, then tap a player from the full list (either order) to swap them.</p>
       <div className="mb-1 text-[10px] font-semibold tracking-wide text-[var(--foreground-muted)] uppercase">On court</div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {onCourt.map((player) => (
@@ -512,18 +671,22 @@ function RosterSwapPanel({
           </button>
         ))}
       </div>
-      <div className="mt-3 mb-1 text-[10px] font-semibold tracking-wide text-[var(--foreground-muted)] uppercase">Bench</div>
+      <div className="mt-3 mb-1 text-[10px] font-semibold tracking-wide text-[var(--foreground-muted)] uppercase">Full list</div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {bench.length ? bench.map((player) => (
-          <button
-            key={player.id}
-            type="button"
-            onClick={() => pickIn(player.id)}
-            className={`truncate rounded-lg border px-3 py-2 text-left text-xs font-semibold ${pendingIn === player.id ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border-color)] hover:bg-[var(--surface-muted)]"}`}
-          >
-            <ArrowLeftRight className="mr-1 inline size-3" /> {player.label}
-          </button>
-        )) : <div className="col-span-full text-xs text-[var(--foreground-muted)]">Everyone is on court.</div>}
+        {fullList.length ? fullList.map((player) => {
+          const alreadyOnCourt = onCourt.some((current) => current.id === player.id);
+          return (
+            <button
+              key={player.id}
+              type="button"
+              disabled={alreadyOnCourt}
+              onClick={() => pickIn(player.id)}
+              className={`truncate rounded-lg border px-3 py-2 text-left text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45 ${pendingIn === player.id ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border-color)] hover:bg-[var(--surface-muted)]"}`}
+            >
+              <ArrowLeftRight className="mr-1 inline size-3" /> {player.label}{alreadyOnCourt ? " • On court" : ""}
+            </button>
+          );
+        }) : <div className="col-span-full text-xs text-[var(--foreground-muted)]">No players in the list.</div>}
       </div>
     </div>
   );

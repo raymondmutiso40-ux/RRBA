@@ -30,7 +30,7 @@ export type MyPlayer = {
   id: string;
   first_name: string;
   last_name: string;
-  date_of_birth: string;
+  date_of_birth: string | null;
   status: string;
   jersey_number: number | null;
   position: string | null;

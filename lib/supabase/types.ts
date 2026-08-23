@@ -139,7 +139,7 @@ export interface Database {
           profile_id: string | null;
           first_name: string;
           last_name: string;
-          date_of_birth: string;
+          date_of_birth: string | null;
           gender: Gender;
           photo_path: string | null;
           email: string | null;
@@ -159,7 +159,7 @@ export interface Database {
         Insert: {
           first_name: string;
           last_name: string;
-          date_of_birth: string;
+          date_of_birth: string | null;
           gender?: Gender;
           profile_id?: string | null;
           photo_path?: string | null;

@@ -30,7 +30,7 @@ type AssignablePlayer = {
   id: string;
   first_name: string;
   last_name: string;
-  date_of_birth: string;
+  date_of_birth: string | null;
 };
 
 /**
@@ -91,7 +91,7 @@ export function TeamRoster({
               {assignable.map((player) => (
                 <option key={player.id} value={player.id}>
                   {player.last_name}, {player.first_name} (
-                  {calculateAge(player.date_of_birth)})
+                  {player.date_of_birth ? calculateAge(player.date_of_birth) : "—"})
                 </option>
               ))}
             </Select>
