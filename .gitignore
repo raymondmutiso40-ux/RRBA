@@ -48,3 +48,5 @@ yarn-error.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+data/imports/rrba-players-missing-phone.csv
+data/imports/rrba-players-ready-69.csv
