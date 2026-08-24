@@ -380,16 +380,10 @@ export function GameDayConsole({
     }));
     const homePoss = estimatedPossessions(totals);
     const oppPoss = estimatedPossessions(opponentTotals);
-    const startingFive: DownloadRow[] = activeOpponent.slice(0, 5).map((key) => {
-      const player = opponentLive.find((entry) => entry.key === key);
-      if (!player) return null;
-      return {
-        name: `#${player.jersey} ${player.name}`,
-        stats: player.stats,
-        plusMinus: opponentPlusMinus[player.key],
-      };
-    }).filter((row): row is DownloadRow => row !== null);
 
+    // The downloadable report contains only the full player lists.
+    // The Starting 5 / on-court controls remain available in the Game Day UI,
+    // but are intentionally not duplicated in the exported JPEG.
     const sectionGap = 42;
     const titleH = 58;
     const headerH = 42;
@@ -399,7 +393,6 @@ export function GameDayConsole({
     const sectionHeights = [
       titleH + headerH + homeRows.length * rowH + sectionGap,
       titleH + headerH + opponentRows.length * rowH + sectionGap,
-      startingFive.length ? titleH + headerH + startingFive.length * rowH + sectionGap : 0,
     ];
     const height = 230 + sectionHeights.reduce((a, b) => a + b, 0) + footerH;
     const canvas = document.createElement("canvas");
@@ -516,7 +509,6 @@ export function GameDayConsole({
 
     drawSection(teamName, homeRows, homePoss);
     drawSection(opponentName, opponentRows, oppPoss);
-    drawSection("Opponent Starting Five", startingFive, oppPoss, "Starting lineup at game start / current active five");
 
     ctx.fillStyle = "#6b7280";
     ctx.font = "15px Arial";

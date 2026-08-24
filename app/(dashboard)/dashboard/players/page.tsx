@@ -29,6 +29,7 @@ import type { BasketballPosition, PlayerStatus } from "@/lib/supabase/types";
 import { calculateAge, formatDate } from "@/lib/utils";
 
 import { PlayerFilters } from "./player-filters";
+import { PlayerImport } from "./player-import";
 
 export const metadata: Metadata = {
   title: "Players",
@@ -76,11 +77,15 @@ export default async function PlayersPage({
         </div>
 
         {canCreatePlayers(user.roles) ? (
-          <Link href="/dashboard/players/new">
-            <Button>Add player</Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard/players/new">
+              <Button>Add player</Button>
+            </Link>
+          </div>
         ) : null}
       </div>
+
+      {canCreatePlayers(user.roles) ? <PlayerImport /> : null}
 
       <Suspense fallback={<FiltersFallback />}>
         <PlayerFilters />
