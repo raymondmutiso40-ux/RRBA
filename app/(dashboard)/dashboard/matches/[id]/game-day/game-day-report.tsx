@@ -26,7 +26,13 @@ export function GameDayReport({ teamName, opponentName, scoreA, scoreB, teamEntr
   const shotEvents = events.filter((e) => e.x != null && e.y != null);
   const quarterScores = useMemo(() => {
     const a = [0, 0, 0, 0]; const b = [0, 0, 0, 0];
-    for (const e of events) if (e.points) (e.side === "home" ? a : b)[Math.max(0, Math.min(3, e.quarter - 1))] += e.points;
+    for (const e of events) {
+      if (e.points) {
+        const arr = e.side === "home" ? a : b;
+        const idx = Math.max(0, Math.min(3, e.quarter - 1));
+        arr[idx] = (arr[idx] ?? 0) + e.points;
+      }
+    }
     return { a, b };
   }, [events]);
   const leaders = useMemo(() => ({
@@ -56,7 +62,12 @@ export function GameDayReport({ teamName, opponentName, scoreA, scoreB, teamEntr
   </div>;
 }
 
-function best(entries: ReportEntry[], getter: (e: ReportEntry) => number) { return entries.length ? entries.reduce((bestEntry, e) => getter(e) > getter(bestEntry) ? e : bestEntry, entries[0]) : null; }
+function best(entries: ReportEntry[], getter: (e: ReportEntry) => number) {
+  if (entries.length === 0) return null;
+  let bestEntry = entries[0] as ReportEntry;
+  for (const e of entries) if (getter(e) > getter(bestEntry)) bestEntry = e;
+  return bestEntry;
+}
 function ReportPage({ children }: { children: React.ReactNode }) { return <section className="rrba-report-page">{children}</section>; }
 function ReportHeader({ page, teamName }: { page: string; teamName?: string }) { return <div className="report-header"><div><div className="report-logo">🏀 <b>BASKET STATS</b></div><small>TRACK. ANALYZE. IMPROVE.</small></div><div className="report-header-title">{teamName ?? "GAME REPORT"}</div><b>Page {page} of 10</b></div>; }
 function SectionTitle({ title }: { title: string }) { return <div className="report-section-title">{title}</div>; }

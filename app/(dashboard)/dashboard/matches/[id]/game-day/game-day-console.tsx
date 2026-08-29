@@ -85,6 +85,7 @@ type HistoryEntry = {
 };
 type Props = {
   eventId: string;
+  matchDate: string;
   teamName: string;
   opponentName: string;
   initialTeamScore: number;
@@ -92,7 +93,6 @@ type Props = {
   initialEntries: BoxScoreEntry[];
   initialOpponentEntries: OpponentBoxScoreEntry[];
 };
-
 function blankLine(): StatLine {
   return {
     minutes_played: 0, points: 0, rebounds: 0, offensive_rebounds: 0, defensive_rebounds: 0,
@@ -120,7 +120,7 @@ function opponentDefaults(entries: OpponentBoxScoreEntry[]): OpponentPlayer[] {
   return Array.from({ length: DEFAULT_OPPONENT_ROSTER }, (_, index) => ({ key: `opp-${index + 1}`, name: `Opponent #${index + 1}`, jersey: index + 4, stats: blankLine() }));
 }
 
-export function GameDayConsole({ eventId, teamName, opponentName, initialTeamScore, initialOpponentScore, initialEntries: rawInitialEntries, initialOpponentEntries }: Props) {
+export function GameDayConsole({ eventId, matchDate, teamName, opponentName, initialTeamScore, initialOpponentScore, initialEntries: rawInitialEntries, initialOpponentEntries }: Props) {
   const initialEntries = useMemo(
     () => Array.from(new Map(rawInitialEntries.map((entry) => [entry.player_id, entry])).values()),
     [rawInitialEntries]
@@ -267,7 +267,7 @@ export function GameDayConsole({ eventId, teamName, opponentName, initialTeamSco
     if (label === "MISS FT") return updatePlayer((l) => ({ ...l, ft_attempts: l.ft_attempts + 1 }), 0, { id: crypto.randomUUID(), quarter, clock, side: selectedSide, playerKey: info.key, playerName: info.name, type: "FT", made: false, points: 0 });
     const statMap: Record<string, StatKey> = { ORB: "offensive_rebounds", DRB: "defensive_rebounds", AST: "assists", BLK: "blocks", STL: "steals", TO: "turnovers", FOUL: "fouls" };
     const key = statMap[label];
-    if (key) return updatePlayer((l) => ({ ...l, [key]: l[key] + 1, ...(key === "offensive_rebounds" || key === "defensive_rebounds" ? { rebounds: l.rebounds + 1 } : {}) }), 0, { id: crypto.randomUUID(), quarter, clock, side: selectedSide, playerKey: info.key, playerName: info.name, type: key === "offensive_rebounds" ? "ORB" : key === "defensive_rebounds" ? "DRB" : key.toUpperCase() as GameEvent["type"] });
+    if (key) return updatePlayer((l) => ({ ...l, [key]: l[key] + 1, ...(key === "offensive_rebounds" || key === "defensive_rebounds" ? { rebounds: l.rebounds + 1 } : {}) }), 0, { id: crypto.randomUUID(), quarter, clock, side: selectedSide, playerKey: info.key, playerName: info.name, type: (key === "offensive_rebounds" ? "ORB" : key === "defensive_rebounds" ? "DRB" : key.toUpperCase()) as "ORB" | "DRB" | "AST" | "BLK" | "STL" | "TO" | "FOUL" });
   }
   function substitute(side: "home" | "opponent", outId: string, inId: string) {
     if (outId === inId) return;
@@ -342,13 +342,13 @@ export function GameDayConsole({ eventId, teamName, opponentName, initialTeamSco
 
         <Card className="overflow-hidden"><div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3"><div><h3 className="font-semibold">Live event log</h3><p className="text-xs text-[var(--foreground-muted)]">Every shot location and recorded action is retained for the report.</p></div><BarChart3 className="size-4" /></div><div className="max-h-80 overflow-auto">{events.length ? [...events].reverse().map((event) => <div key={event.id} className="grid grid-cols-[55px_1fr_auto] gap-3 border-b border-[var(--border-color)] px-4 py-2 text-sm"><span className="font-mono text-xs text-[var(--foreground-muted)]">Q{event.quarter} {formatClock(event.clock)}</span><span><strong>{event.playerName}</strong> · {event.type}{"x" in event ? ` · ${event.made ? "MADE" : "MISSED"} ${event.type} at ${Math.round(event.x)}%, ${Math.round(event.y)}%` : event.made === false ? " · MISSED" : ""}</span><span className="font-semibold tabular-nums">{event.points ? `+${event.points}` : ""}</span></div>) : <div className="px-4 py-8 text-center text-sm text-[var(--foreground-muted)]">No events recorded yet.</div>}</div></Card>
 
-        <Card className="overflow-hidden"><div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3"><div><h3 className="font-semibold">Full live box score</h3><p className="text-xs text-[var(--foreground-muted)]">Full roster, including substituted players, ready for the final report.</p></div><BarChart3 className="size-4" /></div><BoxTable title={teamName} entries={initialEntries.map((e) => ({ name: displayName(e), stats: gameLive[e.player_id] ?? blankLine(), plusMinus: homePlusMinus[e.player_id] }))} total={totals} teamPossessions={estimatedPossessions(totals)} /><BoxTable title={opponentName} entries={opponentLive.map((p) => ({ name: `#${p.jersey} ${p.name}`, stats: p.stats, plusMinus: opponentPlusMinus[p.key] }))} total={opponentTotals} teamPossessions={estimatedPossessions(opponentTotals)} /></Card>
+        <Card className="overflow-hidden"><div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3"><div><h3 className="font-semibold">Full live box score</h3><p className="text-xs text-[var(--foreground-muted)]">Full roster, including substituted players, ready for the final report.</p></div><BarChart3 className="size-4" /></div><BoxTable title={teamName} entries={initialEntries.map((e) => ({ playerKey: e.player_id, name: displayName(e), stats: gameLive[e.player_id] ?? blankLine(), plusMinus: homePlusMinus[e.player_id] }))} total={totals} teamPossessions={estimatedPossessions(totals)} /><BoxTable title={opponentName} entries={opponentLive.map((p) => ({ playerKey: p.key, name: `#${p.jersey} ${p.name}`, stats: p.stats, plusMinus: opponentPlusMinus[p.key] }))} total={opponentTotals} teamPossessions={estimatedPossessions(opponentTotals)} /></Card>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><FooterButton label="Reset" onClick={resetDraft} /><FooterButton label="Undo" onClick={undo} disabled={!history.length} /><FooterButton label="PDF report" onClick={() => setShowReport(true)} /><FooterButton label="JPEG" onClick={downloadJpeg} /></div>
       </div>
 
       {pendingShot ? <ShotLocationModal teamName={selectedSide === "home" ? teamName : opponentName} playerName={selectedPlayerInfo()?.name ?? "Player"} shot={pendingShot} onClose={() => setPendingShot(null)} onPick={recordShot} /> : null}
-      {showReport ? <GameDayReport teamName={teamName} opponentName={opponentName} scoreA={teamScore} scoreB={opponentScore} quarter={quarter} teamEntries={initialEntries.map((e) => ({ name: displayName(e), stats: gameLive[e.player_id] ?? blankLine(), plusMinus: homePlusMinus[e.player_id] }))} opponentEntries={opponentLive.map((p) => ({ name: `#${p.jersey} ${p.name}`, stats: p.stats, plusMinus: opponentPlusMinus[p.key] }))} teamTotals={totals} opponentTotals={opponentTotals} events={events} onClose={() => setShowReport(false)} /> : null}
+      {showReport ? <GameDayReport teamName={teamName} opponentName={opponentName} scoreA={teamScore} scoreB={opponentScore} quarter={quarter} teamEntries={initialEntries.map((e) => ({ playerKey: e.player_id, name: displayName(e), stats: gameLive[e.player_id] ?? blankLine(), plusMinus: homePlusMinus[e.player_id] }))} opponentEntries={opponentLive.map((p) => ({ playerKey: p.key, name: `#${p.jersey} ${p.name}`, stats: p.stats, plusMinus: opponentPlusMinus[p.key] }))} teamTotals={totals} opponentTotals={opponentTotals} events={events} onClose={() => setShowReport(false)} /> : null}
     </>
   );
 }
