@@ -98,6 +98,7 @@ export default async function GameDayPage({
 
       <GameDayConsole
         eventId={match.id}
+        matchDate={formatDate(match.starts_at)}
         teamName={match.team_name ?? "RRBA"}
         opponentName={match.opponent ?? "Opponent"}
         initialTeamScore={match.final_score_team ?? 0}
